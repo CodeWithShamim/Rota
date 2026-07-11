@@ -1,0 +1,470 @@
+/**
+ * Chain-data hooks. Reads go through TanStack Query (so useTxFlow's blanket
+ * invalidation refreshes everything after a write) and are re-fetched live when
+ * contract events fire (see useLiveInvalidation) plus a slow polling fallback.
+ */
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
+import type { Address, PublicClient } from "viem";
+import { useAccount, usePublicClient } from "wagmi";
+import { goalPotAbi, reputationRegistryAbi, rotaCircleAbi, rotaFactoryAbi } from "../abi";
+import { deployments } from "../config/chain";
+
+export const Phase = { OPEN: 0, ACTIVE: 1, COMPLETED: 2, CANCELLED: 3 } as const;
+export const Mode = { FIXED: 0, RANDOM: 1, BID: 2 } as const;
+export const PotPhase = { LOCKED: 0, UNLOCKED: 1 } as const;
+
+const ZERO = "0x0000000000000000000000000000000000000000" as Address;
+const POLL_MS = 12_000;
+
+export function nowSeconds(): bigint {
+  return BigInt(Math.floor(Date.now() / 1000));
+}
+
+// ---------------------------------------------------------------- summaries
+
+export interface CircleSummary {
+  address: Address;
+  name: string;
+  phase: number;
+  mode: number;
+  contributionAmount: bigint;
+  memberCap: bigint;
+  roundDuration: bigint;
+  startTime: bigint;
+  currentRound: bigint;
+  memberCount: bigint;
+  roundContributionCount: bigint;
+  bidWindowBps: bigint;
+  organizer: Address;
+  isMember: boolean;
+  hasContributedNow: boolean;
+  hasWon: boolean;
+  inDefault: boolean;
+  dividendBalance: bigint;
+  collateralBalance: bigint;
+  /** current round deadline (0 when not active) */
+  deadline: bigint;
+  roundStart: bigint;
+  bidWindowEnd: bigint;
+}
+
+async function fetchCircleSummary(
+  pc: PublicClient,
+  address: Address,
+  user: Address | undefined
+): Promise<CircleSummary> {
+  const read = <F extends string>(functionName: F, args?: readonly unknown[]) =>
+    pc.readContract({ address, abi: rotaCircleAbi, functionName, args } as unknown as Parameters<
+      PublicClient["readContract"]
+    >[0]);
+
+  const [name, phase, mode, contributionAmount, memberCap, roundDuration, startTime, currentRound, memberCount, bidWindowBps, organizer] =
+    (await Promise.all([
+      read("name"),
+      read("phase"),
+      read("mode"),
+      read("contributionAmount"),
+      read("memberCap"),
+      read("roundDuration"),
+      read("startTime"),
+      read("currentRound"),
+      read("memberCount"),
+      read("bidWindowBps"),
+      read("organizer"),
+    ])) as [string, number, number, bigint, bigint, bigint, bigint, bigint, bigint, bigint, Address];
+
+  const active = phase === Phase.ACTIVE;
+  const round = active ? currentRound : 0n;
+  const [roundContributionCount, isMember, hasContributedNow, hasWon, inDefault, dividendBalance, collateralBalance] =
+    (await Promise.all([
+      read("roundContributionCount", [round]),
+      user ? read("isMember", [user]) : false,
+      user ? read("hasContributed", [round, user]) : false,
+      user ? read("hasWon", [user]) : false,
+      user ? read("inDefault", [user]) : false,
+      user ? read("dividendBalance", [user]) : 0n,
+      user ? read("collateralBalance", [user]) : 0n,
+    ])) as [bigint, boolean, boolean, boolean, boolean, bigint, bigint];
+
+  const roundStart = startTime + round * roundDuration;
+  return {
+    address,
+    name,
+    phase,
+    mode,
+    contributionAmount,
+    memberCap,
+    roundDuration,
+    startTime,
+    currentRound,
+    memberCount,
+    roundContributionCount,
+    bidWindowBps,
+    organizer,
+    isMember,
+    hasContributedNow,
+    hasWon,
+    inDefault,
+    dividendBalance,
+    collateralBalance,
+    deadline: active ? roundStart + roundDuration : 0n,
+    roundStart,
+    bidWindowEnd: active ? roundStart + (roundDuration * bidWindowBps) / 10_000n : 0n,
+  };
+}
+
+export interface PotSummary {
+  address: Address;
+  name: string;
+  phase: number;
+  targetAmount: bigint;
+  deadline: bigint;
+  totalDeposited: bigint;
+  totalHaircut: bigint;
+  memberCount: bigint;
+  progressBps: bigint;
+  unlockable: boolean;
+  targetReached: boolean;
+  minContribution: bigint;
+  earlyExitHaircutBps: bigint;
+  givingBps: bigint;
+  givingRecipient: Address;
+  inviteOnly: boolean;
+  organizer: Address;
+  deposited: bigint;
+}
+
+async function fetchPotSummary(pc: PublicClient, address: Address, user: Address | undefined): Promise<PotSummary> {
+  const read = <F extends string>(functionName: F, args?: readonly unknown[]) =>
+    pc.readContract({ address, abi: goalPotAbi, functionName, args } as unknown as Parameters<
+      PublicClient["readContract"]
+    >[0]);
+
+  const [name, phase, targetAmount, deadline, totalDeposited, totalHaircut, memberCount, progressBps, unlockable, targetReached, minContribution, earlyExitHaircutBps, givingBps, givingRecipient, inviteOnly, organizer, deposited] =
+    (await Promise.all([
+      read("name"),
+      read("phase"),
+      read("targetAmount"),
+      read("deadline"),
+      read("totalDeposited"),
+      read("totalHaircut"),
+      read("memberCount"),
+      read("progressBps"),
+      read("unlockable"),
+      read("targetReached"),
+      read("minContribution"),
+      read("earlyExitHaircutBps"),
+      read("givingBps"),
+      read("givingRecipient"),
+      read("inviteOnly"),
+      read("organizer"),
+      user ? read("deposited", [user]) : 0n,
+    ])) as [string, number, bigint, bigint, bigint, bigint, bigint, bigint, boolean, boolean, bigint, bigint, bigint, Address, boolean, Address, bigint];
+
+  return {
+    address,
+    name,
+    phase,
+    targetAmount,
+    deadline,
+    totalDeposited,
+    totalHaircut,
+    memberCount,
+    progressBps,
+    unlockable,
+    targetReached,
+    minContribution,
+    earlyExitHaircutBps,
+    givingBps,
+    givingRecipient,
+    inviteOnly,
+    organizer,
+    deposited,
+  };
+}
+
+// ----------------------------------------------------------------- overview
+
+export function useCirclesOverview() {
+  const pc = usePublicClient();
+  const { address: user } = useAccount();
+  return useQuery({
+    queryKey: ["circlesOverview", user ?? "anon"],
+    enabled: !!pc && deployments.factory !== ZERO,
+    refetchInterval: POLL_MS,
+    queryFn: async () => {
+      const addresses = (await pc!.readContract({
+        address: deployments.factory,
+        abi: rotaFactoryAbi,
+        functionName: "getCircles",
+      })) as readonly Address[];
+      return Promise.all(addresses.map((a) => fetchCircleSummary(pc!, a, user)));
+    },
+  });
+}
+
+export function usePotsOverview() {
+  const pc = usePublicClient();
+  const { address: user } = useAccount();
+  return useQuery({
+    queryKey: ["potsOverview", user ?? "anon"],
+    enabled: !!pc && deployments.factory !== ZERO,
+    refetchInterval: POLL_MS,
+    queryFn: async () => {
+      const addresses = (await pc!.readContract({
+        address: deployments.factory,
+        abi: rotaFactoryAbi,
+        functionName: "getGoalPots",
+      })) as readonly Address[];
+      return Promise.all(addresses.map((a) => fetchPotSummary(pc!, a, user)));
+    },
+  });
+}
+
+// ------------------------------------------------------------------- detail
+
+export interface ActivityItem {
+  eventName: string;
+  args: Record<string, unknown>;
+  blockNumber: bigint;
+  logIndex: number;
+  txHash: string;
+}
+
+export interface CircleDetail extends CircleSummary {
+  collateralBps: bigint;
+  givingBps: bigint;
+  givingRecipient: Address;
+  maxDiscountBps: bigint;
+  openDeadline: bigint;
+  inviteOnly: boolean;
+  penaltyCarry: bigint;
+  members: readonly Address[];
+  payoutOrder: readonly Address[];
+  bestBid: { bidder: Address; discountBps: number; exists: boolean };
+  autoPayOptIn: boolean;
+  allowlisted: boolean;
+  cureCost: bigint;
+  previewRecipient: Address;
+  /** contributionMatrix[round][member] = contributed */
+  contributionMatrix: Record<string, Record<string, boolean>>;
+  activity: ActivityItem[];
+}
+
+export function useCircleDetail(address: Address | undefined) {
+  const pc = usePublicClient();
+  const { address: user } = useAccount();
+  useLiveInvalidation(address, ["circleDetail", "circlesOverview"]);
+
+  return useQuery({
+    queryKey: ["circleDetail", address, user ?? "anon"],
+    enabled: !!pc && !!address,
+    refetchInterval: POLL_MS,
+    queryFn: async (): Promise<CircleDetail> => {
+      const summary = await fetchCircleSummary(pc!, address!, user);
+      const read = <F extends string>(functionName: F, args?: readonly unknown[]) =>
+        pc!.readContract({ address: address!, abi: rotaCircleAbi, functionName, args } as unknown as Parameters<
+          PublicClient["readContract"]
+        >[0]);
+
+      const round = summary.phase === Phase.ACTIVE ? summary.currentRound : 0n;
+      const [collateralBps, givingBps, givingRecipient, maxDiscountBps, openDeadline, inviteOnly, penaltyCarry, members, payoutOrder, bestBidRaw, autoPayOptIn, allowlisted, cureCost, previewRecipient] =
+        (await Promise.all([
+          read("collateralBps"),
+          read("givingBps"),
+          read("givingRecipient"),
+          read("maxDiscountBps"),
+          read("openDeadline"),
+          read("inviteOnly"),
+          read("penaltyCarry"),
+          read("getMembers"),
+          read("getPayoutOrder"),
+          read("bestBid", [round]),
+          user ? read("autoPayOptIn", [user]) : false,
+          user ? read("allowlist", [user]) : false,
+          user ? read("cureCost", [user]) : 0n,
+          read("previewRecipient"),
+        ])) as [bigint, bigint, Address, bigint, bigint, boolean, bigint, readonly Address[], readonly Address[], readonly [Address, number, boolean], boolean, boolean, bigint, Address];
+
+      const logs = await pc!.getContractEvents({
+        address: address!,
+        abi: rotaCircleAbi,
+        fromBlock: 0n,
+      });
+      const activity: ActivityItem[] = logs
+        .map((l) => ({
+          eventName: l.eventName as string,
+          args: (l.args ?? {}) as Record<string, unknown>,
+          blockNumber: l.blockNumber ?? 0n,
+          logIndex: l.logIndex ?? 0,
+          txHash: l.transactionHash ?? "",
+        }))
+        .sort((a, b) =>
+          a.blockNumber === b.blockNumber ? a.logIndex - b.logIndex : Number(a.blockNumber - b.blockNumber)
+        );
+
+      const contributionMatrix: Record<string, Record<string, boolean>> = {};
+      for (const item of activity) {
+        if (item.eventName === "Contributed") {
+          const r = String(item.args.round);
+          const m = String(item.args.member).toLowerCase();
+          (contributionMatrix[r] ??= {})[m] = true;
+        }
+      }
+
+      return {
+        ...summary,
+        collateralBps,
+        givingBps,
+        givingRecipient,
+        maxDiscountBps,
+        openDeadline,
+        inviteOnly,
+        penaltyCarry,
+        members,
+        payoutOrder,
+        bestBid: { bidder: bestBidRaw[0], discountBps: Number(bestBidRaw[1]), exists: bestBidRaw[2] },
+        autoPayOptIn,
+        allowlisted,
+        cureCost,
+        previewRecipient,
+        contributionMatrix,
+        activity,
+      };
+    },
+  });
+}
+
+export interface PotDetail extends PotSummary {
+  members: readonly Address[];
+  balances: Record<string, bigint>;
+  activity: ActivityItem[];
+}
+
+export function usePotDetail(address: Address | undefined) {
+  const pc = usePublicClient();
+  const { address: user } = useAccount();
+  useLiveInvalidation(address, ["potDetail", "potsOverview"], goalPotAbi);
+
+  return useQuery({
+    queryKey: ["potDetail", address, user ?? "anon"],
+    enabled: !!pc && !!address,
+    refetchInterval: POLL_MS,
+    queryFn: async (): Promise<PotDetail> => {
+      const summary = await fetchPotSummary(pc!, address!, user);
+      const members = (await pc!.readContract({
+        address: address!,
+        abi: goalPotAbi,
+        functionName: "getMembers",
+      })) as readonly Address[];
+      const balances: Record<string, bigint> = {};
+      await Promise.all(
+        members.map(async (m) => {
+          balances[m.toLowerCase()] = (await pc!.readContract({
+            address: address!,
+            abi: goalPotAbi,
+            functionName: "deposited",
+            args: [m],
+          })) as bigint;
+        })
+      );
+      const logs = await pc!.getContractEvents({ address: address!, abi: goalPotAbi, fromBlock: 0n });
+      const activity: ActivityItem[] = logs
+        .map((l) => ({
+          eventName: l.eventName as string,
+          args: (l.args ?? {}) as Record<string, unknown>,
+          blockNumber: l.blockNumber ?? 0n,
+          logIndex: l.logIndex ?? 0,
+          txHash: l.transactionHash ?? "",
+        }))
+        .sort((a, b) =>
+          a.blockNumber === b.blockNumber ? a.logIndex - b.logIndex : Number(a.blockNumber - b.blockNumber)
+        );
+      return { ...summary, members, balances, activity };
+    },
+  });
+}
+
+// --------------------------------------------------------------- reputation
+
+export interface ReputationData {
+  contributions: bigint;
+  defaults: bigint;
+  completions: bigint;
+  cures: bigint;
+  earlyExits: bigint;
+  score: bigint;
+  history: ActivityItem[];
+}
+
+export function useReputation(subject: Address | undefined) {
+  const pc = usePublicClient();
+  return useQuery({
+    queryKey: ["reputation", subject],
+    enabled: !!pc && !!subject && deployments.reputationRegistry !== ZERO,
+    refetchInterval: POLL_MS * 2,
+    queryFn: async (): Promise<ReputationData> => {
+      const [stats, score] = (await pc!.readContract({
+        address: deployments.reputationRegistry,
+        abi: reputationRegistryAbi,
+        functionName: "getScore",
+        args: [subject!],
+      })) as [
+        { contributions: bigint; defaults: bigint; completions: bigint; cures: bigint; earlyExits: bigint },
+        bigint,
+      ];
+      const logs = await pc!.getContractEvents({
+        address: deployments.reputationRegistry,
+        abi: reputationRegistryAbi,
+        fromBlock: 0n,
+      });
+      const history = logs
+        .filter((l) => String((l.args as Record<string, unknown>)?.user ?? "").toLowerCase() === subject!.toLowerCase())
+        .map((l) => ({
+          eventName: l.eventName as string,
+          args: (l.args ?? {}) as Record<string, unknown>,
+          blockNumber: l.blockNumber ?? 0n,
+          logIndex: l.logIndex ?? 0,
+          txHash: l.transactionHash ?? "",
+        }))
+        .sort((a, b) => Number(b.blockNumber - a.blockNumber) || b.logIndex - a.logIndex);
+      return {
+        contributions: BigInt(stats.contributions),
+        defaults: BigInt(stats.defaults),
+        completions: BigInt(stats.completions),
+        cures: BigInt(stats.cures),
+        earlyExits: BigInt(stats.earlyExits),
+        score,
+        history,
+      };
+    },
+  });
+}
+
+// -------------------------------------------------------- live invalidation
+
+/** Watch a contract's logs and invalidate the given query prefixes on any event. */
+function useLiveInvalidation(
+  address: Address | undefined,
+  queryPrefixes: string[],
+  abi: typeof rotaCircleAbi | typeof goalPotAbi = rotaCircleAbi
+) {
+  const pc = usePublicClient();
+  const queryClient = useQueryClient();
+  useEffect(() => {
+    if (!pc || !address) return;
+    const unwatch = pc.watchContractEvent({
+      address,
+      abi,
+      onLogs: () => {
+        for (const prefix of queryPrefixes) {
+          void queryClient.invalidateQueries({ queryKey: [prefix] });
+        }
+      },
+      pollingInterval: 4_000,
+    } as unknown as Parameters<PublicClient["watchContractEvent"]>[0]);
+    return unwatch;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pc, address, queryClient]);
+}
