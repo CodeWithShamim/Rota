@@ -1,0 +1,17 @@
+# Foundry build artifacts
+out/
+cache/
+
+# Deployment records (local/dev)
+broadcast/
+deployments/
+
+# Environment / secrets
+.env
+.env.local
+*.pem
+*.key
+
+# OS / editor
+.DS_Store
+*.swp
