@@ -75,7 +75,24 @@ Run the contract suite:
 pnpm test:contracts    # forge test — 66 tests, all green
 ```
 
-## Deploying to Arc testnet
+## Arc testnet — live deployment
+
+Rota is **deployed on Arc Testnet** (chain id `5042002`, deployed 2026-07-11):
+
+| Contract | Address |
+|---|---|
+| RotaFactory | [`0xFafC67365e7dA77BF4c441C3DD29bAB57cD5CaAa`](https://testnet.arcscan.app/address/0xFafC67365e7dA77BF4c441C3DD29bAB57cD5CaAa) |
+| ReputationRegistry | [`0xc7919F673f9886Eec01511ce66B7fBD23EA835E5`](https://testnet.arcscan.app/address/0xc7919F673f9886Eec01511ce66B7fBD23EA835E5) |
+| RotaCircle implementation | [`0xf563E78ED45dDd8d324729aB37634d56800a839B`](https://testnet.arcscan.app/address/0xf563E78ED45dDd8d324729aB37634d56800a839B) |
+| GoalPot implementation | [`0xc123985c09a0a9f3FC9077b5aB40B59dec9B4f4b`](https://testnet.arcscan.app/address/0xc123985c09a0a9f3FC9077b5aB40B59dec9B4f4b) |
+| USDC (canonical ERC-20 interface) | [`0x3600000000000000000000000000000000000000`](https://testnet.arcscan.app/address/0x3600000000000000000000000000000000000000) |
+
+Run the app against it with `VITE_CHAIN=arc pnpm dev` (or set `VITE_CHAIN=arc` in
+`.env` / `.env.local` at the repo root — the app reads env from there). Get testnet
+USDC for your wallet at <https://faucet.circle.com> (Arc Testnet); on Arc, USDC is
+also the gas token.
+
+### Redeploying
 
 Chain values were researched from docs.arc.io and recorded in
 [docs/ARC_NOTES.md](docs/ARC_NOTES.md): chain id **5042002**, RPC
@@ -83,13 +100,12 @@ Chain values were researched from docs.arc.io and recorded in
 native gas token with an ERC-20 interface at `0x3600…0000` (6 decimals).
 
 1. Fund a deployer wallet with testnet USDC at <https://faucet.circle.com>
-   (gas on Arc is paid in USDC).
-2. `cp .env.example .env` and set `PRIVATE_KEY`.
+   (a full deploy costs ≈ 0.12 USDC in gas).
+2. `cp .env.example .env` and set `PRIVATE_KEY=0x…` (the `0x` prefix is required).
 3. ```bash
-   export PRIVATE_KEY=0x…
-   pnpm deploy:arc          # deploys registry/implementations/factory, syncs ABIs
+   pnpm deploy:arc   # sources .env/.env.local, deploys registry/implementations/factory,
+                     # writes contracts/deployments/arc.json, syncs ABIs + addresses to the app
    ```
-4. Run the app against Arc: `VITE_CHAIN=arc pnpm dev` (or set it in `.env`).
 
 ## Architecture
 
@@ -177,4 +193,3 @@ country, so **Rota stays on testnet until reviewed per market**.
 ## License
 
 MIT (contracts and app). Not audited. Not financial advice.
-# Rota
