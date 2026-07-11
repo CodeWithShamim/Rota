@@ -4,6 +4,7 @@
     "tagline": "Your turn always comes."
   },
   "nav": {
+    "home": "Home",
     "dashboard": "Dashboard",
     "create": "Create",
     "passport": "Credit Passport",

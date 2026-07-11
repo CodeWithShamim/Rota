@@ -270,6 +270,9 @@ function NavLinks() {
   const { t } = useTranslation();
   return (
     <>
+      <NavLink to="/" end className={navLinkClass}>
+        {t("nav.home")}
+      </NavLink>
       <NavLink to="/app" end className={navLinkClass} data-tour="nav-dashboard">
         {t("nav.dashboard")}
       </NavLink>
