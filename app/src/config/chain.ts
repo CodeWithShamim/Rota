@@ -20,6 +20,8 @@ export interface Deployments {
   circleImplementation: Address;
   goalPotImplementation: Address;
   factory: Address;
+  /** block to start eth_getLogs scans from (Arc caps ranges at 10,000 blocks) */
+  deployBlock?: number;
 }
 
 /** Arc Testnet — values from docs/ARC_NOTES.md (docs.arc.io, fetched 2026-07-11). */

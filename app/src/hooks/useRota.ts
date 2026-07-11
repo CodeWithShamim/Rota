@@ -232,6 +232,44 @@ export interface ActivityItem {
   txHash: string;
 }
 
+// Arc's RPC rejects eth_getLogs spans over 10,000 blocks (HTTP 413), so scan
+// from the deployment block upward in chunks.
+const LOG_CHUNK = 10_000n;
+const LOG_START_BLOCK = BigInt(deployments.deployBlock ?? 0);
+
+async function fetchContractActivity(
+  pc: PublicClient,
+  address: Address,
+  abi: typeof rotaCircleAbi | typeof goalPotAbi | typeof reputationRegistryAbi
+): Promise<ActivityItem[]> {
+  const latest = await pc.getBlockNumber();
+  const ranges: { fromBlock: bigint; toBlock: bigint }[] = [];
+  for (let from = LOG_START_BLOCK; from <= latest; from += LOG_CHUNK) {
+    const to = from + LOG_CHUNK - 1n;
+    ranges.push({ fromBlock: from, toBlock: to < latest ? to : latest });
+  }
+  const chunks = await Promise.all(
+    ranges.map(
+      (r) =>
+        pc.getContractEvents({ address, abi, ...r } as unknown as Parameters<
+          PublicClient["getContractEvents"]
+        >[0]) as Promise<import("viem").Log[]>
+    )
+  );
+  return chunks
+    .flat()
+    .map((l) => ({
+      eventName: (l as unknown as { eventName?: string }).eventName ?? "",
+      args: ((l as unknown as { args?: Record<string, unknown> }).args ?? {}) as Record<string, unknown>,
+      blockNumber: l.blockNumber ?? 0n,
+      logIndex: l.logIndex ?? 0,
+      txHash: l.transactionHash ?? "",
+    }))
+    .sort((a, b) =>
+      a.blockNumber === b.blockNumber ? a.logIndex - b.logIndex : Number(a.blockNumber - b.blockNumber)
+    );
+}
+
 export interface CircleDetail extends CircleSummary {
   collateralBps: bigint;
   givingBps: bigint;
@@ -287,22 +325,7 @@ export function useCircleDetail(address: Address | undefined) {
           read("previewRecipient"),
         ])) as [bigint, bigint, Address, bigint, bigint, boolean, bigint, readonly Address[], readonly Address[], readonly [Address, number, boolean], boolean, boolean, bigint, Address];
 
-      const logs = await pc!.getContractEvents({
-        address: address!,
-        abi: rotaCircleAbi,
-        fromBlock: 0n,
-      });
-      const activity: ActivityItem[] = logs
-        .map((l) => ({
-          eventName: l.eventName as string,
-          args: (l.args ?? {}) as Record<string, unknown>,
-          blockNumber: l.blockNumber ?? 0n,
-          logIndex: l.logIndex ?? 0,
-          txHash: l.transactionHash ?? "",
-        }))
-        .sort((a, b) =>
-          a.blockNumber === b.blockNumber ? a.logIndex - b.logIndex : Number(a.blockNumber - b.blockNumber)
-        );
+      const activity = await fetchContractActivity(pc!, address!, rotaCircleAbi);
 
       const contributionMatrix: Record<string, Record<string, boolean>> = {};
       for (const item of activity) {
@@ -369,18 +392,7 @@ export function usePotDetail(address: Address | undefined) {
           })) as bigint;
         })
       );
-      const logs = await pc!.getContractEvents({ address: address!, abi: goalPotAbi, fromBlock: 0n });
-      const activity: ActivityItem[] = logs
-        .map((l) => ({
-          eventName: l.eventName as string,
-          args: (l.args ?? {}) as Record<string, unknown>,
-          blockNumber: l.blockNumber ?? 0n,
-          logIndex: l.logIndex ?? 0,
-          txHash: l.transactionHash ?? "",
-        }))
-        .sort((a, b) =>
-          a.blockNumber === b.blockNumber ? a.logIndex - b.logIndex : Number(a.blockNumber - b.blockNumber)
-        );
+      const activity = await fetchContractActivity(pc!, address!, goalPotAbi);
       return { ...summary, members, balances, activity };
     },
   });
@@ -414,21 +426,10 @@ export function useReputation(subject: Address | undefined) {
         { contributions: bigint; defaults: bigint; completions: bigint; cures: bigint; earlyExits: bigint },
         bigint,
       ];
-      const logs = await pc!.getContractEvents({
-        address: deployments.reputationRegistry,
-        abi: reputationRegistryAbi,
-        fromBlock: 0n,
-      });
-      const history = logs
-        .filter((l) => String((l.args as Record<string, unknown>)?.user ?? "").toLowerCase() === subject!.toLowerCase())
-        .map((l) => ({
-          eventName: l.eventName as string,
-          args: (l.args ?? {}) as Record<string, unknown>,
-          blockNumber: l.blockNumber ?? 0n,
-          logIndex: l.logIndex ?? 0,
-          txHash: l.transactionHash ?? "",
-        }))
-        .sort((a, b) => Number(b.blockNumber - a.blockNumber) || b.logIndex - a.logIndex);
+      const allEvents = await fetchContractActivity(pc!, deployments.reputationRegistry, reputationRegistryAbi);
+      const history = allEvents
+        .filter((l) => String(l.args.user ?? "").toLowerCase() === subject!.toLowerCase())
+        .reverse();
       return {
         contributions: BigInt(stats.contributions),
         defaults: BigInt(stats.defaults),

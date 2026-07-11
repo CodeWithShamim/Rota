@@ -35,7 +35,9 @@ contract DeployArc is Script {
             '  "reputationRegistry": "', vm.toString(address(registry)), '",\n',
             '  "circleImplementation": "', vm.toString(address(circleImpl)), '",\n',
             '  "goalPotImplementation": "', vm.toString(address(potImpl)), '",\n',
-            '  "factory": "', vm.toString(address(factory)), '"\n',
+            '  "factory": "', vm.toString(address(factory)), '",\n',
+            // simulation block <= actual inclusion block, so it's a safe getLogs lower bound
+            '  "deployBlock": ', vm.toString(block.number), '\n',
             "}\n"
         );
         vm.writeFile("deployments/arc.json", json);

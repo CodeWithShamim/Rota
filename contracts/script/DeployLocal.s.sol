@@ -48,7 +48,8 @@ contract DeployLocal is Script {
             '  "reputationRegistry": "', vm.toString(address(registry)), '",\n',
             '  "circleImplementation": "', vm.toString(address(circleImpl)), '",\n',
             '  "goalPotImplementation": "', vm.toString(address(potImpl)), '",\n',
-            '  "factory": "', vm.toString(address(factory)), '"\n',
+            '  "factory": "', vm.toString(address(factory)), '",\n',
+            '  "deployBlock": ', vm.toString(block.number), '\n',
             "}\n"
         );
         vm.writeFile("deployments/local.json", json);

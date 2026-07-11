@@ -4,5 +4,6 @@
   "reputationRegistry": "0xc7919F673f9886Eec01511ce66B7fBD23EA835E5",
   "circleImplementation": "0xf563E78ED45dDd8d324729aB37634d56800a839B",
   "goalPotImplementation": "0xc123985c09a0a9f3FC9077b5aB40B59dec9B4f4b",
-  "factory": "0xFafC67365e7dA77BF4c441C3DD29bAB57cD5CaAa"
+  "factory": "0xFafC67365e7dA77BF4c441C3DD29bAB57cD5CaAa",
+  "deployBlock": 51278962
 }
