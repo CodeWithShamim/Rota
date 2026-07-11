@@ -22,5 +22,5 @@
   <path d="M 227.48 577.69 A 292 292 0 0 1 227.48 446.31" stroke="#34d399" stroke-opacity="0.86" stroke-width="82" stroke-linecap="round" fill="none"/>
   <path d="M 264.37 357.26 A 292 292 0 0 1 357.26 264.37" stroke="#34d399" stroke-opacity="0.95" stroke-width="82" stroke-linecap="round" fill="none"/>
   <circle cx="512" cy="512" r="118" fill="url(#coin)" opacity="1"/>
-  <circle cx="512" cy="512" r="70" fill="none" stroke="#064e3b" stroke-opacity="0.55" stroke-width="14.8" opacity="1"/>
+  <circle cx="512" cy="512" r="70" fill="none" stroke="#b45309" stroke-opacity="0.75" stroke-width="14.8" opacity="1"/>
 </svg>

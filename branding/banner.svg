@@ -16,14 +16,12 @@
   <g>
     <path d="M 1262.51 -42.31 A 300 300 0 0 1 1397.49 -42.31" stroke="#fbbf24" stroke-width="84" stroke-linecap="round" fill="none"/>
   <path d="M 1488.98 -4.41 A 300 300 0 0 1 1584.41 91.02" stroke="#34d399" stroke-opacity="0.06" stroke-width="84" stroke-linecap="round" fill="none"/>
-  <path d="M 1622.31 182.51 A 300 300 0 0 1 1622.31 317.49" stroke="#34d399" stroke-opacity="0.08" stroke-width="84" stroke-linecap="round" fill="none"/>
-  <path d="M 1584.41 408.98 A 300 300 0 0 1 1488.98 504.41" stroke="#34d399" stroke-opacity="0.09" stroke-width="84" stroke-linecap="round" fill="none"/>
-  <path d="M 1397.49 542.31 A 300 300 0 0 1 1262.51 542.31" stroke="#34d399" stroke-opacity="0.11" stroke-width="84" stroke-linecap="round" fill="none"/>
-  <path d="M 1171.02 504.41 A 300 300 0 0 1 1075.59 408.98" stroke="#34d399" stroke-opacity="0.12" stroke-width="84" stroke-linecap="round" fill="none"/>
-  <path d="M 1037.69 317.49 A 300 300 0 0 1 1037.69 182.51" stroke="#34d399" stroke-opacity="0.14" stroke-width="84" stroke-linecap="round" fill="none"/>
-  <path d="M 1075.59 91.02 A 300 300 0 0 1 1171.02 -4.41" stroke="#34d399" stroke-opacity="0.15" stroke-width="84" stroke-linecap="round" fill="none"/>
-  <circle cx="1330" cy="250" r="120" fill="url(#coin)" opacity="0.16"/>
-  <circle cx="1330" cy="250" r="72" fill="none" stroke="#064e3b" stroke-opacity="0.55" stroke-width="15.1" opacity="0.16"/>
+  <path d="M 1622.31 182.51 A 300 300 0 0 1 1622.31 317.49" stroke="#34d399" stroke-opacity="0.07" stroke-width="84" stroke-linecap="round" fill="none"/>
+  <path d="M 1584.41 408.98 A 300 300 0 0 1 1488.98 504.41" stroke="#34d399" stroke-opacity="0.08" stroke-width="84" stroke-linecap="round" fill="none"/>
+  <path d="M 1397.49 542.31 A 300 300 0 0 1 1262.51 542.31" stroke="#34d399" stroke-opacity="0.09" stroke-width="84" stroke-linecap="round" fill="none"/>
+  <path d="M 1171.02 504.41 A 300 300 0 0 1 1075.59 408.98" stroke="#34d399" stroke-opacity="0.11" stroke-width="84" stroke-linecap="round" fill="none"/>
+  <path d="M 1037.69 317.49 A 300 300 0 0 1 1037.69 182.51" stroke="#34d399" stroke-opacity="0.12" stroke-width="84" stroke-linecap="round" fill="none"/>
+  <path d="M 1075.59 91.02 A 300 300 0 0 1 1171.02 -4.41" stroke="#34d399" stroke-opacity="0.13" stroke-width="84" stroke-linecap="round" fill="none"/>
   </g>
   <circle cx="1330" cy="250" r="430" fill="none" stroke="#34d399" stroke-opacity="0.08" stroke-width="2"/>
   <!-- the mark -->
@@ -36,7 +34,7 @@
   <path d="M 120.02 276.54 A 118 118 0 0 1 120.02 223.46" stroke="#34d399" stroke-opacity="0.86" stroke-width="33" stroke-linecap="round" fill="none"/>
   <path d="M 134.93 187.47 A 118 118 0 0 1 172.47 149.93" stroke="#34d399" stroke-opacity="0.95" stroke-width="33" stroke-linecap="round" fill="none"/>
   <circle cx="235" cy="250" r="47" fill="url(#coin)" opacity="1"/>
-  <circle cx="235" cy="250" r="28" fill="none" stroke="#064e3b" stroke-opacity="0.55" stroke-width="5.9" opacity="1"/>
+  <circle cx="235" cy="250" r="28" fill="none" stroke="#b45309" stroke-opacity="0.75" stroke-width="5.9" opacity="1"/>
   <!-- wordmark + taglines -->
   <g font-family="Inter, 'Noto Sans Bengali', -apple-system, 'Segoe UI', sans-serif">
     <text x="432" y="248" font-size="126" font-weight="800" fill="#ffffff" letter-spacing="-3">Rota</text>
