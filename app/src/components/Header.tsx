@@ -11,6 +11,7 @@ import { useReputation } from "../hooks/useRota";
 import { useUsdcActions, useUsdcBalance } from "../hooks/useUsdc";
 import { SUPPORTED_LOCALES } from "../i18n";
 import { formatUsdc, shortAddress } from "../lib/format";
+import { TOUR_EVENT } from "./Tour";
 import { Badge, Button } from "./ui";
 import {
   AddressAvatar,
@@ -18,6 +19,7 @@ import {
   CheckIcon,
   ChevronDownIcon,
   CopyIcon,
+  HelpCircleIcon,
   LogOutIcon,
   MoonIcon,
   RotaMark,
@@ -168,7 +170,7 @@ function NotificationsBell() {
   const { reminders, browserEnabled, enableBrowser } = useNotifications();
   const [open, setOpen] = useState(false);
   return (
-    <div className="relative">
+    <div className="relative" data-tour="notifications">
       <button
         onClick={() => setOpen((o) => !o)}
         className="relative rounded-xl border border-stone-300 p-2 text-stone-600 hover:bg-stone-50 dark:border-stone-700 dark:text-stone-300 dark:hover:bg-stone-800"
@@ -217,6 +219,20 @@ function NotificationsBell() {
   );
 }
 
+function TourButton() {
+  const { t } = useTranslation();
+  return (
+    <button
+      onClick={() => window.dispatchEvent(new Event(TOUR_EVENT))}
+      className="rounded-xl border border-stone-300 p-2 text-stone-600 hover:bg-stone-50 dark:border-stone-700 dark:text-stone-300 dark:hover:bg-stone-800"
+      aria-label={t("tour.restart")}
+      title={t("tour.restart")}
+    >
+      <HelpCircleIcon />
+    </button>
+  );
+}
+
 function ThemeToggle() {
   const { t } = useTranslation();
   const { theme, toggle } = useTheme();
@@ -254,16 +270,16 @@ function NavLinks() {
   const { t } = useTranslation();
   return (
     <>
-      <NavLink to="/app" end className={navLinkClass}>
+      <NavLink to="/app" end className={navLinkClass} data-tour="nav-dashboard">
         {t("nav.dashboard")}
       </NavLink>
-      <NavLink to="/app/create" className={navLinkClass}>
+      <NavLink to="/app/create" className={navLinkClass} data-tour="nav-create">
         {t("nav.create")}
       </NavLink>
-      <NavLink to="/app/reputation" className={navLinkClass}>
+      <NavLink to="/app/reputation" className={navLinkClass} data-tour="nav-passport">
         {t("nav.passport")}
       </NavLink>
-      <NavLink to="/docs" className={navLinkClass}>
+      <NavLink to="/docs" className={navLinkClass} data-tour="nav-docs">
         {t("nav.docs")}
       </NavLink>
       <NavLink to="/news" className={navLinkClass}>
@@ -297,6 +313,7 @@ export function Header() {
             className={`hidden sm:block ${selectClass}`}
             value={i18n.resolvedLanguage}
             onChange={(e) => void i18n.changeLanguage(e.target.value)}
+            data-tour="language"
           >
             {SUPPORTED_LOCALES.map((l) => (
               <option key={l.code} value={l.code}>
@@ -317,9 +334,12 @@ export function Header() {
             ))}
           </select>
           <ReputationBadge />
+          <TourButton />
           <ThemeToggle />
           <NotificationsBell />
-          <ConnectControls />
+          <div data-tour="connect">
+            <ConnectControls />
+          </div>
         </div>
       </div>
       {/* sub-navbar */}
@@ -337,6 +357,7 @@ export function Header() {
               className={selectClass}
               value={i18n.resolvedLanguage}
               onChange={(e) => void i18n.changeLanguage(e.target.value)}
+              data-tour="language"
             >
               {SUPPORTED_LOCALES.map((l) => (
                 <option key={l.code} value={l.code}>

@@ -11,3 +11,19 @@ html.dark {
   @apply bg-stone-950 text-stone-100;
   color-scheme: dark;
 }
+
+/* faint blueprint grid behind the landing hero, faded out at the edges */
+.hero-grid {
+  background-image:
+    linear-gradient(to right, rgb(5 150 105 / 0.08) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(5 150 105 / 0.08) 1px, transparent 1px);
+  background-size: 2.75rem 2.75rem;
+  -webkit-mask-image: radial-gradient(ellipse 90% 70% at 50% 30%, black 25%, transparent 95%);
+  mask-image: radial-gradient(ellipse 90% 70% at 50% 30%, black 25%, transparent 95%);
+}
+
+html.dark .hero-grid {
+  background-image:
+    linear-gradient(to right, rgb(52 211 153 / 0.07) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(52 211 153 / 0.07) 1px, transparent 1px);
+}

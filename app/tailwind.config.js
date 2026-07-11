@@ -22,6 +22,19 @@ export default {
       fontFamily: {
         sans: ["Inter", "Noto Sans Bengali", "system-ui", "sans-serif"],
       },
+      keyframes: {
+        orbit: { to: { transform: "rotate(360deg)" } },
+        "orbit-reverse": { to: { transform: "rotate(-360deg)" } },
+        "hero-float": {
+          "0%, 100%": { transform: "translateY(0)" },
+          "50%": { transform: "translateY(-8px)" },
+        },
+      },
+      animation: {
+        orbit: "orbit 44s linear infinite",
+        "orbit-reverse": "orbit-reverse 44s linear infinite",
+        "hero-float": "hero-float 6s ease-in-out infinite",
+      },
     },
   },
   plugins: [],

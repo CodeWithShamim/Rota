@@ -3,6 +3,7 @@ import { Route, Routes } from "react-router-dom";
 import { Footer } from "./components/Footer";
 import { Header } from "./components/Header";
 import { Toasts } from "./components/Toasts";
+import { Tour } from "./components/Tour";
 import { CircleDetailPage } from "./pages/CircleDetail";
 import { CreatePage } from "./pages/Create";
 import { DashboardPage } from "./pages/Dashboard";
@@ -39,6 +40,7 @@ export default function App() {
       </main>
       <Footer />
       <Toasts />
+      <Tour />
     </div>
   );
 }

@@ -9,14 +9,18 @@ const ORBIT_FLAGS = ["🇧🇩", "🇦🇪", "🇬🇧", "🇲🇾", "🇸🇦",
 function HeroOrbit() {
   const step = 360 / ORBIT_FLAGS.length;
   return (
-    <div className="relative mx-auto aspect-square w-full max-w-[24rem] lg:max-w-[26rem]" aria-hidden="true">
+    // rounded-full + overflow-hidden clips the rotating wrappers' corners so they never widen the page
+    <div
+      className="relative mx-auto aspect-square w-full max-w-[24rem] overflow-hidden rounded-full lg:max-w-[26rem]"
+      aria-hidden="true"
+    >
       {/* rings */}
-      <div className="absolute inset-0 rounded-full border-2 border-dashed border-brand-300/70 dark:border-brand-700/50" />
-      <div className="absolute inset-[14%] rounded-full border border-brand-200/80 dark:border-brand-800/60" />
-      <div className="absolute inset-[30%] rounded-full bg-brand-200/40 blur-2xl dark:bg-brand-500/10" />
+      <div className="absolute inset-8 rounded-full border-2 border-dashed border-brand-300/70 dark:border-brand-700/50" />
+      <div className="absolute inset-[22%] rounded-full border border-brand-200/80 dark:border-brand-800/60" />
+      <div className="absolute inset-[34%] rounded-full bg-brand-200/40 blur-2xl dark:bg-brand-500/10" />
 
       {/* orbiting members */}
-      <div className="absolute inset-0 animate-orbit motion-reduce:animate-none">
+      <div className="absolute inset-8 animate-orbit motion-reduce:animate-none">
         {ORBIT_FLAGS.map((flag, i) => (
           <div key={flag} className="absolute inset-0" style={{ transform: `rotate(${step * i}deg)` }}>
             <div className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2">
@@ -80,12 +84,12 @@ export function LandingPage() {
 
         <div className="grid items-center gap-12 lg:grid-cols-[1.15fr_0.85fr] lg:gap-8">
           <div className="text-center lg:text-left">
-            <div className="inline-flex items-center gap-2 rounded-full border border-brand-200 bg-white/70 px-4 py-1.5 text-xs font-semibold tracking-wide text-brand-800 backdrop-blur dark:border-brand-800/70 dark:bg-brand-950/50 dark:text-brand-300">
-              <span className="relative flex h-2 w-2">
+            <div className="inline-flex max-w-full items-center gap-2 rounded-full border border-brand-200 bg-white/70 px-4 py-1.5 text-xs font-semibold tracking-wide text-brand-800 backdrop-blur dark:border-brand-800/70 dark:bg-brand-950/50 dark:text-brand-300">
+              <span className="relative flex h-2 w-2 shrink-0">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand-500 opacity-75 motion-reduce:animate-none" />
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-brand-500" />
               </span>
-              {t("landing.heroNames")}
+              <span className="min-w-0">{t("landing.heroNames")}</span>
             </div>
 
             <h1 className="mx-auto mt-6 max-w-3xl text-4xl font-extrabold leading-[1.1] tracking-tight sm:text-5xl xl:text-6xl lg:mx-0">

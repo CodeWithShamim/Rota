@@ -489,5 +489,27 @@
     "resources": "Resources",
     "rights": "All rights reserved.",
     "builtOnArc": "Built on Arc"
+  },
+  "tour": {
+    "restart": "Take the tour",
+    "skip": "Skip tour",
+    "done": "Finish",
+    "stepOf": "{{current}} of {{total}}",
+    "welcomeTitle": "Welcome to Rota 👋",
+    "welcomeBody": "Rota is the savings circle your community already trusts — somiti, tanda, susu — run by a smart contract, so nobody can run away with the pot. This one-minute tour shows you around.",
+    "connectTitle": "Connect your wallet",
+    "connectBody": "Everything starts here. Connect MetaMask (or any browser wallet) — Rota adds the right network for you. Once connected, open this menu to get free test USDC.",
+    "dashboardTitle": "Your savings, at a glance",
+    "dashboardBody": "Every circle and goal pot you join lives on the dashboard. Colored badges tell you exactly when something needs you — a contribution due, a bid window open, funds ready to withdraw.",
+    "createTitle": "Start a circle or goal pot",
+    "createBody": "A two-minute wizard: name it, set the amount and rules, then share the invite link on WhatsApp. Your people join with one tap.",
+    "passportTitle": "Build your Credit Passport",
+    "passportBody": "Every on-time contribution and completed circle builds a public, on-chain credit score you own — portable proof of savings discipline you can show a lender or landlord.",
+    "notificationsTitle": "Never miss a round",
+    "notificationsBody": "Reminders collect here: contributions due, bid windows closing, funds ready to withdraw. You can also turn on browser notifications.",
+    "languageTitle": "Your language, your currency",
+    "languageBody": "Switch the interface language and show amounts in taka, rupees, or pesos. The money that moves on-chain is always exactly the USDC shown.",
+    "docsTitle": "Want the full story?",
+    "docsBody": "The Guide explains everything in plain language — collateral, bidding, AutoPay, fees — in about five minutes. Enjoy Rota: your turn always comes."
   }
 }
