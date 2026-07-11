@@ -9,6 +9,30 @@ import { useToast } from "../hooks/toast";
 import { useReputation } from "../hooks/useRota";
 import { shortAddress } from "../lib/format";
 
+const VERIFIED_KEY = "rota.passportVerified";
+
+function readVerified(address: string): boolean {
+  try {
+    const raw = localStorage.getItem(VERIFIED_KEY);
+    return raw ? (JSON.parse(raw) as string[]).includes(address.toLowerCase()) : false;
+  } catch {
+    return false;
+  }
+}
+
+function storeVerified(address: string) {
+  try {
+    const raw = localStorage.getItem(VERIFIED_KEY);
+    const list = raw ? (JSON.parse(raw) as string[]) : [];
+    if (!list.includes(address.toLowerCase())) {
+      list.push(address.toLowerCase());
+      localStorage.setItem(VERIFIED_KEY, JSON.stringify(list));
+    }
+  } catch {
+    // storage unavailable: verification lasts for the session only
+  }
+}
+
 const eventLabels: Record<string, { key: string; tone: "brand" | "red" | "amber" | "stone" }> = {
   ContributionRecorded: { key: "passport.contributions", tone: "brand" },
   CompletionRecorded: { key: "passport.completions", tone: "brand" },
@@ -27,7 +51,7 @@ export function PassportPage() {
   const { signMessageAsync } = useSignMessage();
   const publicClient = usePublicClient();
   const toast = useToast();
-  const [verified, setVerified] = useState(false);
+  const [sessionVerified, setSessionVerified] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
   if (!subject) {
@@ -43,6 +67,8 @@ export function PassportPage() {
   }
 
   const isOwn = connected?.toLowerCase() === subject.toLowerCase();
+  const verified =
+    isOwn && !!connected && (sessionVerified === connected.toLowerCase() || readVerified(connected));
   const shareUrl = `${window.location.origin}/app/reputation/${subject}`;
   const rows = [
     { label: t("passport.completions"), count: data.completions, points: data.completions * 100n },
@@ -59,14 +85,16 @@ export function PassportPage() {
       const signature = await signMessageAsync({ message });
       // Client-side verification supports smart accounts (ERC-1271/6492), not just EOAs.
       const ok = await publicClient.verifyMessage({ address: connected, message, signature });
-      setVerified(ok);
       if (ok) {
+        storeVerified(connected);
+        setSessionVerified(connected.toLowerCase());
         toast.push("success", t("passport.verified"), 5000);
       } else {
+        setSessionVerified(null);
         toast.push("error", t("passport.verifyFailed"), 5000);
       }
     } catch {
-      setVerified(false);
+      setSessionVerified(null);
       toast.push("error", t("passport.verifyFailed"), 5000);
     }
   }
@@ -78,10 +106,10 @@ export function PassportPage() {
           {t("passport.title")}
         </p>
         <p className="mt-1 font-mono text-sm text-brand-200">{shortAddress(subject)}</p>
-        <div className="mt-4 flex items-end gap-3">
+        <div className="mt-4 flex flex-wrap items-end gap-3">
           <span className="text-6xl font-extrabold tracking-tight">{data.score.toString()}</span>
           <span className="pb-2 text-brand-200">{t("passport.score")}</span>
-          {verified && <Badge tone="brand">✓ {t("passport.verified")}</Badge>}
+          {verified && <Badge tone="brand">✓ {t("passport.verifiedBadge")}</Badge>}
         </div>
         <p className="mt-2 max-w-md text-sm text-brand-200">{t("passport.subtitle")}</p>
       </Card>
@@ -112,7 +140,7 @@ export function PassportPage() {
         <p className="mb-3 text-sm text-stone-600 dark:text-stone-400">{t("passport.shareHint")}</p>
         <div className="flex flex-col items-start gap-4 sm:flex-row">
           <QRCode value={shareUrl} size={120} />
-          <div className="min-w-0 flex-1 space-y-2">
+          <div className="w-full min-w-0 flex-1 space-y-2">
             <code className="block truncate rounded-lg bg-stone-100 px-3 py-2 text-xs dark:bg-stone-800">{shareUrl}</code>
             <div className="flex flex-wrap gap-2">
               <Button

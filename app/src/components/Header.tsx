@@ -31,6 +31,7 @@ function ConnectControls() {
   const { connect, connectors, isPending } = useConnect();
   const { disconnect } = useDisconnect();
   const { switchChain } = useSwitchChain();
+  const { faucet } = useUsdcActions();
   const wrongNetwork = isConnected && chainId !== activeChain.id;
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -84,26 +85,57 @@ function ConnectControls() {
     <div className="relative" ref={menuRef}>
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-2 rounded-xl border border-stone-300 px-3 py-2 font-mono text-sm text-stone-700 hover:bg-stone-50 dark:border-stone-700 dark:text-stone-300 dark:hover:bg-stone-800"
+        className="flex items-stretch overflow-hidden rounded-xl border border-stone-300 text-sm transition-colors hover:border-stone-400 dark:border-stone-700 dark:hover:border-stone-500"
         aria-haspopup="menu"
         aria-expanded={open}
       >
-        <AddressAvatar address={address!} className="h-4 w-4" />
-        {shortAddress(address!)}
-        <ChevronDownIcon className={`h-3.5 w-3.5 text-stone-400 transition-transform ${open ? "rotate-180" : ""}`} />
+        {balance !== undefined && (
+          <span className="hidden items-center whitespace-nowrap border-r border-stone-200 bg-stone-100 px-3 font-semibold text-stone-800 sm:flex dark:border-stone-700 dark:bg-stone-800 dark:text-stone-100">
+            {formatUsdc(balance, i18n.language)}
+            <span className="ml-1 font-medium text-stone-400 dark:text-stone-500">USDC</span>
+          </span>
+        )}
+        <span className="flex items-center gap-2 px-3 py-2 font-mono text-stone-700 hover:bg-stone-50 dark:text-stone-300 dark:hover:bg-stone-800">
+          <AddressAvatar address={address!} className="h-4 w-4" />
+          {shortAddress(address!)}
+          <ChevronDownIcon className={`h-3.5 w-3.5 text-stone-400 transition-transform ${open ? "rotate-180" : ""}`} />
+        </span>
       </button>
       {open && (
         <div
           role="menu"
-          className="absolute right-0 z-30 mt-2 w-48 rounded-2xl border border-stone-200 bg-white p-1.5 shadow-lg dark:border-stone-700 dark:bg-stone-900"
+          className="absolute right-0 z-30 mt-2 w-60 rounded-2xl border border-stone-200 bg-white p-1.5 shadow-lg dark:border-stone-700 dark:bg-stone-900"
         >
           {balance !== undefined && (
             <>
-              <div className="flex items-center justify-between gap-2 px-2.5 py-2 text-sm sm:hidden">
-                <span className="text-stone-500 dark:text-stone-400">{t("header.balance")}</span>
-                <span className="font-semibold">{formatUsdc(balance, i18n.language)} USDC</span>
+              <div className="px-2.5 py-2">
+                <p className="text-xs font-medium text-stone-500 dark:text-stone-400">
+                  {t("header.balance")}
+                </p>
+                <div className="mt-0.5 flex flex-wrap items-baseline justify-between gap-x-2 gap-y-1">
+                  <span className="text-sm font-semibold text-stone-900 dark:text-stone-100">
+                    {formatUsdc(balance, i18n.language)} USDC
+                  </span>
+                  {faucet ? (
+                    <button
+                      className="text-xs font-semibold text-brand-700 hover:underline dark:text-brand-400"
+                      onClick={() => void faucet()}
+                    >
+                      {t("faucet.mintLocal")}
+                    </button>
+                  ) : (
+                    <a
+                      className="text-xs font-semibold text-brand-700 hover:underline dark:text-brand-400"
+                      href={FAUCET_URL}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      {t("circle.getTestUsdc")}
+                    </a>
+                  )}
+                </div>
               </div>
-              <div className="my-1 h-px bg-stone-100 dark:bg-stone-800 sm:hidden" />
+              <div className="my-1 h-px bg-stone-100 dark:bg-stone-800" />
             </>
           )}
           <button
@@ -126,38 +158,6 @@ function ConnectControls() {
             {t("header.disconnect")}
           </button>
         </div>
-      )}
-    </div>
-  );
-}
-
-function BalancePill({ className = "" }: { className?: string }) {
-  const { t, i18n } = useTranslation();
-  const { isConnected } = useAccount();
-  const { data: balance } = useUsdcBalance();
-  const { faucet } = useUsdcActions();
-  if (!isConnected || balance === undefined) return null;
-  return (
-    <div
-      className={`items-center gap-2 rounded-xl bg-stone-100 px-3 py-2 text-sm dark:bg-stone-800 ${className}`}
-    >
-      <span className="font-semibold">{formatUsdc(balance, i18n.language)} USDC</span>
-      {faucet ? (
-        <button
-          className="text-xs font-semibold text-brand-700 hover:underline dark:text-brand-400"
-          onClick={() => void faucet()}
-        >
-          {t("faucet.mintLocal")}
-        </button>
-      ) : (
-        <a
-          className="text-xs font-semibold text-brand-700 hover:underline dark:text-brand-400"
-          href={FAUCET_URL}
-          target="_blank"
-          rel="noreferrer"
-        >
-          {t("circle.getTestUsdc")}
-        </a>
       )}
     </div>
   );
@@ -244,10 +244,10 @@ function ReputationBadge() {
 }
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
-  `-mb-px whitespace-nowrap border-b-2 px-3 py-2.5 text-sm font-medium transition-colors ${
+  `whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
     isActive
-      ? "border-brand-600 text-brand-700 dark:border-brand-400 dark:text-brand-300"
-      : "border-transparent text-stone-500 hover:border-stone-300 hover:text-stone-800 dark:text-stone-400 dark:hover:border-stone-600 dark:hover:text-stone-200"
+      ? "bg-white text-brand-700 shadow-sm ring-1 ring-stone-200 dark:bg-stone-800 dark:text-brand-300 dark:ring-stone-700"
+      : "text-stone-600 hover:bg-white/70 hover:text-stone-900 dark:text-stone-400 dark:hover:bg-stone-800/60 dark:hover:text-stone-200"
   }`;
 
 function NavLinks() {
@@ -263,6 +263,9 @@ function NavLinks() {
       <NavLink to="/app/reputation" className={navLinkClass}>
         {t("nav.passport")}
       </NavLink>
+      <NavLink to="/docs" className={navLinkClass}>
+        {t("nav.docs")}
+      </NavLink>
     </>
   );
 }
@@ -272,7 +275,7 @@ export function Header() {
   const { code, setCurrency } = useDisplayCurrency();
 
   const selectClass =
-    "rounded-lg border border-stone-300 bg-white px-1.5 py-1.5 text-sm dark:border-stone-700 dark:bg-stone-900 dark:text-stone-200";
+    "rounded-lg border border-stone-200 bg-transparent px-1.5 py-1.5 text-sm text-stone-600 hover:border-stone-300 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-300 dark:hover:border-stone-700";
 
   return (
     <header className="sticky top-0 z-20 border-b border-stone-200 bg-white/90 backdrop-blur dark:border-stone-800 dark:bg-stone-950/90">
@@ -310,7 +313,6 @@ export function Header() {
               </option>
             ))}
           </select>
-          <BalancePill className="hidden sm:flex" />
           <ReputationBadge />
           <ThemeToggle />
           <NotificationsBell />
@@ -318,15 +320,15 @@ export function Header() {
         </div>
       </div>
       {/* sub-navbar */}
-      <div className="border-t border-stone-100 dark:border-stone-800/60">
-        <div className="mx-auto flex max-w-5xl items-center gap-2 px-4">
+      <div className="border-t border-stone-200/70 bg-stone-50 dark:border-stone-800/60 dark:bg-stone-900/60">
+        <div className="mx-auto flex max-w-5xl items-center gap-2 px-4 py-1.5">
           <nav
             className="flex min-w-0 flex-1 gap-1 overflow-x-auto"
             aria-label={t("header.navigation")}
           >
             <NavLinks />
           </nav>
-          <div className="flex shrink-0 items-center gap-1.5 py-1 sm:hidden">
+          <div className="flex shrink-0 items-center gap-1.5 sm:hidden">
             <select
               aria-label={t("header.language")}
               className={selectClass}

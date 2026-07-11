@@ -1,20 +1,21 @@
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
+import { GlobeIcon, LockIcon, StarIcon, TagIcon, TargetIcon, UsersIcon, ZapIcon } from "../components/icons";
 import { Card } from "../components/ui";
 
 export function LandingPage() {
   const { t } = useTranslation();
 
   const products = [
-    { icon: "🔄", name: t("landing.productCircleName"), desc: t("landing.productCircleDesc") },
-    { icon: "🏷️", name: t("landing.productBidName"), desc: t("landing.productBidDesc") },
-    { icon: "🎯", name: t("landing.productPotName"), desc: t("landing.productPotDesc") },
+    { Icon: UsersIcon, name: t("landing.productCircleName"), desc: t("landing.productCircleDesc") },
+    { Icon: TagIcon, name: t("landing.productBidName"), desc: t("landing.productBidDesc") },
+    { Icon: TargetIcon, name: t("landing.productPotName"), desc: t("landing.productPotDesc") },
   ];
   const trust = [
-    { icon: "🔒", title: t("landing.trustEscrowTitle"), desc: t("landing.trustEscrowDesc") },
-    { icon: "⚙️", title: t("landing.trustAutoTitle"), desc: t("landing.trustAutoDesc") },
-    { icon: "🌍", title: t("landing.trustBorderlessTitle"), desc: t("landing.trustBorderlessDesc") },
-    { icon: "⭐", title: t("landing.trustReputationTitle"), desc: t("landing.trustReputationDesc") },
+    { Icon: LockIcon, title: t("landing.trustEscrowTitle"), desc: t("landing.trustEscrowDesc") },
+    { Icon: ZapIcon, title: t("landing.trustAutoTitle"), desc: t("landing.trustAutoDesc") },
+    { Icon: GlobeIcon, title: t("landing.trustBorderlessTitle"), desc: t("landing.trustBorderlessDesc") },
+    { Icon: StarIcon, title: t("landing.trustReputationTitle"), desc: t("landing.trustReputationDesc") },
   ];
   const steps = [
     { n: "1", title: t("landing.howStep1Title"), desc: t("landing.howStep1Desc") },
@@ -72,7 +73,9 @@ export function LandingPage() {
         <div className="grid gap-4 sm:grid-cols-3">
           {products.map((p) => (
             <Card key={p.name} className="transition-shadow hover:shadow-md">
-              <div className="text-3xl">{p.icon}</div>
+              <div className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-brand-100 text-brand-700 dark:bg-brand-900/50 dark:text-brand-300">
+                <p.Icon className="h-6 w-6" />
+              </div>
               <h3 className="mt-3 text-lg font-bold text-stone-900 dark:text-stone-100">{p.name}</h3>
               <p className="mt-1 text-sm text-stone-600 dark:text-stone-400">{p.desc}</p>
             </Card>
@@ -101,7 +104,9 @@ export function LandingPage() {
         <div className="grid gap-4 sm:grid-cols-2">
           {trust.map((item) => (
             <Card key={item.title} className="flex gap-4">
-              <div className="text-2xl">{item.icon}</div>
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-100 text-brand-700 dark:bg-brand-900/50 dark:text-brand-300">
+                <item.Icon className="h-5 w-5" />
+              </div>
               <div>
                 <h3 className="font-semibold text-stone-900 dark:text-stone-100">{item.title}</h3>
                 <p className="mt-1 text-sm text-stone-600 dark:text-stone-400">{item.desc}</p>

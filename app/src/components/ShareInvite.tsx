@@ -33,7 +33,7 @@ export function ShareInvite({ name, url }: { name: string; url: string }) {
   return (
     <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start">
       <QRCode value={url} />
-      <div className="flex min-w-0 flex-1 flex-col gap-2">
+      <div className="flex w-full min-w-0 flex-1 flex-col gap-2">
         <p className="text-sm text-stone-600 dark:text-stone-400">{t("create.inviteHint")}</p>
         <code className="block truncate rounded-lg bg-stone-100 px-3 py-2 text-xs text-stone-700 dark:bg-stone-800 dark:text-stone-300">{url}</code>
         <div className="flex flex-wrap gap-2">

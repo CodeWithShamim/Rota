@@ -8,6 +8,7 @@ import { AmountInput } from "../components/AmountInput";
 import { ApproveThen } from "../components/ApproveThen";
 import { Money } from "../components/Money";
 import { ShareInvite } from "../components/ShareInvite";
+import { HandHeartIcon, SparklesIcon, TagIcon, TargetIcon, UsersIcon } from "../components/icons";
 import { Button, Card } from "../components/ui";
 import { deployments } from "../config/chain";
 import { useTxFlow } from "../hooks/useTxFlow";
@@ -113,7 +114,8 @@ function GivingSection({
           checked={enabled}
           onChange={(e) => onChange({ giving: e.target.checked, givingRecipient: recipient, givingPct: pct })}
         />
-        🤲 {t("create.givingLabel")} — {t("create.givingToggle")}
+        <HandHeartIcon className="h-4 w-4 shrink-0 text-brand-600 dark:text-brand-400" />
+        {t("create.givingLabel")} — {t("create.givingToggle")}
       </label>
       {enabled && (
         <div className="mt-3 space-y-3">
@@ -287,8 +289,9 @@ export function CreatePage() {
     const url = `${window.location.origin}/app/${deployed.kind === "circle" ? "circle" : "pot"}/${deployed.address}`;
     return (
       <Card className="mx-auto max-w-xl">
-        <h1 className="text-xl font-bold text-stone-900 dark:text-stone-100">
-          🎉 {t(deployed.kind === "circle" ? "create.deployedTitle" : "create.deployedPotTitle")}
+        <h1 className="flex items-center gap-2 text-xl font-bold text-stone-900 dark:text-stone-100">
+          <SparklesIcon className="h-5 w-5 shrink-0 text-brand-600 dark:text-brand-400" />
+          {t(deployed.kind === "circle" ? "create.deployedTitle" : "create.deployedPotTitle")}
         </h1>
         <p className="mb-4 mt-1 text-sm font-semibold text-brand-700 dark:text-brand-400">{t("create.invite")}</p>
         <ShareInvite name={deployed.name} url={url} />
@@ -302,10 +305,10 @@ export function CreatePage() {
   }
 
   if (!product) {
-    const options: { key: Product; icon: string; name: string; desc: string }[] = [
-      { key: "circle", icon: "🔄", name: t("landing.productCircleName"), desc: t("landing.productCircleDesc") },
-      { key: "bid", icon: "🏷️", name: t("landing.productBidName"), desc: t("landing.productBidDesc") },
-      { key: "pot", icon: "🎯", name: t("landing.productPotName"), desc: t("landing.productPotDesc") },
+    const options: { key: Product; Icon: typeof UsersIcon; name: string; desc: string }[] = [
+      { key: "circle", Icon: UsersIcon, name: t("landing.productCircleName"), desc: t("landing.productCircleDesc") },
+      { key: "bid", Icon: TagIcon, name: t("landing.productBidName"), desc: t("landing.productBidDesc") },
+      { key: "pot", Icon: TargetIcon, name: t("landing.productPotName"), desc: t("landing.productPotDesc") },
     ];
     return (
       <div className="mx-auto max-w-2xl">
@@ -314,7 +317,9 @@ export function CreatePage() {
           {options.map((o) => (
             <button key={o.key} onClick={() => setProduct(o.key)} className="text-left">
               <Card className="h-full transition-shadow hover:border-brand-400 hover:shadow-md">
-                <div className="text-3xl">{o.icon}</div>
+                <div className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-brand-100 text-brand-700 dark:bg-brand-900/50 dark:text-brand-300">
+                  <o.Icon className="h-6 w-6" />
+                </div>
                 <h3 className="mt-2 font-bold text-stone-900 dark:text-stone-100">{o.name}</h3>
                 <p className="mt-1 text-xs text-stone-600 dark:text-stone-400">{o.desc}</p>
               </Card>
