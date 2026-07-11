@@ -12,6 +12,7 @@
     "deploy:arc": "set -a; [ -f .env ] && . ./.env; [ -f .env.local ] && . ./.env.local; set +a; cd contracts && forge script script/DeployArc.s.sol --rpc-url https://rpc.testnet.arc.network --broadcast && cd .. && node scripts/abi-sync.mjs",
     "seed:local": "node scripts/seed-local.mjs",
     "abi:sync": "node scripts/abi-sync.mjs",
+    "lint:genvm": "uvx --from genvm-linter genvm-lint check genlayer/news_curator.py",
     "dev": "pnpm --dir app dev",
     "build": "pnpm --dir app build"
   },
