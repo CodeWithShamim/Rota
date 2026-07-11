@@ -73,19 +73,20 @@ of the seeded circles. The header has a **Mint 1,000 test USDC** button on anvil
 Run the contract suite:
 
 ```bash
-pnpm test:contracts    # forge test — 66 tests, all green
+pnpm test:contracts    # forge test — 74 tests, all green
 ```
 
 ## Arc testnet — live deployment
 
-Rota is **deployed on Arc Testnet** (chain id `5042002`, deployed 2026-07-11):
+Rota is **deployed on Arc Testnet** (chain id `5042002`, redeployed 2026-07-12 with
+the audit fixes from [SECURITY.md](SECURITY.md)):
 
 | Contract | Address |
 |---|---|
-| RotaFactory | [`0xFafC67365e7dA77BF4c441C3DD29bAB57cD5CaAa`](https://testnet.arcscan.app/address/0xFafC67365e7dA77BF4c441C3DD29bAB57cD5CaAa) |
-| ReputationRegistry | [`0xc7919F673f9886Eec01511ce66B7fBD23EA835E5`](https://testnet.arcscan.app/address/0xc7919F673f9886Eec01511ce66B7fBD23EA835E5) |
-| RotaCircle implementation | [`0xf563E78ED45dDd8d324729aB37634d56800a839B`](https://testnet.arcscan.app/address/0xf563E78ED45dDd8d324729aB37634d56800a839B) |
-| GoalPot implementation | [`0xc123985c09a0a9f3FC9077b5aB40B59dec9B4f4b`](https://testnet.arcscan.app/address/0xc123985c09a0a9f3FC9077b5aB40B59dec9B4f4b) |
+| RotaFactory | [`0x1ba8Aabc9501d6C68A9eE1387b0d40d53EdCC325`](https://testnet.arcscan.app/address/0x1ba8Aabc9501d6C68A9eE1387b0d40d53EdCC325) |
+| ReputationRegistry | [`0xDE51D720ad3b93300e6f8A6F936f62F291c5CE80`](https://testnet.arcscan.app/address/0xDE51D720ad3b93300e6f8A6F936f62F291c5CE80) |
+| RotaCircle implementation | [`0x5d5f658706acCB2B25B7f3FE22261C44DCA0DC2F`](https://testnet.arcscan.app/address/0x5d5f658706acCB2B25B7f3FE22261C44DCA0DC2F) |
+| GoalPot implementation | [`0x0159536F931Ed1d1DdFEB4f1fc69F9f8429f0161`](https://testnet.arcscan.app/address/0x0159536F931Ed1d1DdFEB4f1fc69F9f8429f0161) |
 | USDC (canonical ERC-20 interface) | [`0x3600000000000000000000000000000000000000`](https://testnet.arcscan.app/address/0x3600000000000000000000000000000000000000) |
 
 Run the app against it with `VITE_CHAIN=arc pnpm dev` (or set `VITE_CHAIN=arc` in

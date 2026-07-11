@@ -1,9 +1,9 @@
 {
   "chainId": 5042002,
   "usdc": "0x3600000000000000000000000000000000000000",
-  "reputationRegistry": "0xc7919F673f9886Eec01511ce66B7fBD23EA835E5",
-  "circleImplementation": "0xf563E78ED45dDd8d324729aB37634d56800a839B",
-  "goalPotImplementation": "0xc123985c09a0a9f3FC9077b5aB40B59dec9B4f4b",
-  "factory": "0xFafC67365e7dA77BF4c441C3DD29bAB57cD5CaAa",
-  "deployBlock": 51278962
+  "reputationRegistry": "0xDE51D720ad3b93300e6f8A6F936f62F291c5CE80",
+  "circleImplementation": "0x5d5f658706acCB2B25B7f3FE22261C44DCA0DC2F",
+  "goalPotImplementation": "0x0159536F931Ed1d1DdFEB4f1fc69F9f8429f0161",
+  "factory": "0x1ba8Aabc9501d6C68A9eE1387b0d40d53EdCC325",
+  "deployBlock": 51335776
 }

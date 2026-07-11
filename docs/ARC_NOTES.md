@@ -63,23 +63,29 @@ Mainnet addresses/config are **not yet published** by Circle.
 - **Bridge** (CCTP v2): programmatic USDC movement across chains (docs: `/app-kit/bridge`).
 - Swap / Send also available. All are one-method calls against an adapter.
 
-## Rota deployment on Arc Testnet (2026-07-11)
+## Rota deployment on Arc Testnet (2026-07-12)
 
+Redeployed with the 2026-07 audit fixes (blacklist-proof payouts, deferred giving,
+early-exit gate, reputation caps, locked implementations — see SECURITY.md).
 Deployed with `pnpm deploy:arc` (`script/DeployArc.s.sol`); the canonical record is
 `contracts/deployments/arc.json` (synced to `app/src/config/deployments.arc.json`).
-Full deploy cost ≈ 0.12 USDC in gas at ~41 gwei.
+Full deploy cost ≈ 0.12 USDC in gas at ~41 gwei (5 txs).
 
 | Contract | Address |
 |---|---|
-| RotaFactory | `0xFafC67365e7dA77BF4c441C3DD29bAB57cD5CaAa` |
-| ReputationRegistry | `0xc7919F673f9886Eec01511ce66B7fBD23EA835E5` |
-| RotaCircle implementation | `0xf563E78ED45dDd8d324729aB37634d56800a839B` |
-| GoalPot implementation | `0xc123985c09a0a9f3FC9077b5aB40B59dec9B4f4b` |
+| RotaFactory | `0x1ba8Aabc9501d6C68A9eE1387b0d40d53EdCC325` |
+| ReputationRegistry | `0xDE51D720ad3b93300e6f8A6F936f62F291c5CE80` |
+| RotaCircle implementation | `0x5d5f658706acCB2B25B7f3FE22261C44DCA0DC2F` |
+| GoalPot implementation | `0x0159536F931Ed1d1DdFEB4f1fc69F9f8429f0161` |
 
 Post-deploy verification (all live on `https://rpc.testnet.arc.network`):
 `factory.registry()` ↔ `registry.factory()` point at each other, both implementation
 getters match the JSON, USDC at `0x3600…0000` reports `symbol()=USDC` /
-`decimals()=6`, and a simulated `factory.createCircle(...)` succeeds.
+`decimals()=6`.
+
+Previous deployment (2026-07-11, pre-audit — superseded, do not use): factory
+`0xFafC67365e7dA77BF4c441C3DD29bAB57cD5CaAa`, registry
+`0xc7919F673f9886Eec01511ce66B7fBD23EA835E5`.
 
 ## Placeholders
 
