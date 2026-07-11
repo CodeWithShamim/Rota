@@ -34,7 +34,7 @@ contract ReentrancyTest is BaseTest {
         if (activate_) circle.activate();
     }
 
-    function test_SettleRound_ReentrancyBlocked() public {
+    function test_SettleRound_ReentrantTokenCannotBlockOrDoubleSettle() public {
         RotaCircle circle = evilCircle(true);
         for (uint256 i; i < 3; ++i) {
             vm.startPrank(users[i]);
@@ -42,10 +42,38 @@ contract ReentrancyTest is BaseTest {
             circle.contribute();
             vm.stopPrank();
         }
-        // during the payout transfer, the token re-enters settleRound
+        // during the payout transfer, the token re-enters settleRound; the guard
+        // makes the reentrant call (and thus the whole transfer) revert, so the
+        // payout is deferred to the recipient's dividend balance instead — the
+        // hostile token can neither double-settle nor block settlement
         evil.setAttack(address(circle), abi.encodeCall(RotaCircle.settleRound, ()));
-        vm.expectRevert(ReentrancyGuard.ReentrancyGuardReentrantCall.selector);
         circle.settleRound();
+        assertEq(circle.currentRound(), 1, "settled exactly once");
+        assertEq(circle.dividendBalance(users[0]), 3 * CONTRIBUTION, "payout deferred");
+
+        // once the token behaves again, the recipient can pull the deferred payout
+        evil.setAttack(address(0), "");
+        uint256 before = evil.balanceOf(users[0]);
+        vm.prank(users[0]);
+        circle.withdrawDividends();
+        assertEq(evil.balanceOf(users[0]), before + 3 * CONTRIBUTION);
+    }
+
+    function test_WithdrawDividends_ReentrancyBlocked() public {
+        RotaCircle circle = evilCircle(true);
+        for (uint256 i; i < 3; ++i) {
+            vm.startPrank(users[i]);
+            evil.approve(address(circle), type(uint256).max);
+            circle.contribute();
+            vm.stopPrank();
+        }
+        evil.setAttack(address(circle), abi.encodeCall(RotaCircle.settleRound, ()));
+        circle.settleRound(); // payout deferred to users[0]'s dividend balance
+
+        evil.setAttack(address(circle), abi.encodeCall(RotaCircle.withdrawDividends, ()));
+        vm.prank(users[0]);
+        vm.expectRevert(ReentrancyGuard.ReentrancyGuardReentrantCall.selector);
+        circle.withdrawDividends();
     }
 
     function test_WithdrawCollateral_ReentrancyBlocked() public {

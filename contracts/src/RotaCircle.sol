@@ -162,8 +162,15 @@ contract RotaCircle is ReentrancyGuard {
     event CircleCompleted();
     event CircleCancelled();
     event AllowlistUpdated(address indexed account, bool allowed);
+    event PayoutDeferred(address indexed to, uint256 amount);
 
     // ---------------------------------------------------------- initializer
+
+    /// @dev Lock the implementation contract. Clones get fresh storage
+    ///      (_initialized = false) and are initialized by the factory as usual.
+    constructor() {
+        _initialized = true;
+    }
 
     /// @notice Initialize a freshly deployed clone. Called once by the factory.
     /// @dev The organizer is registered as member #0 here; the factory transfers the
@@ -379,9 +386,9 @@ contract RotaCircle is ReentrancyGuard {
 
         if (givingCut > 0) {
             emit GivingPaid(r, givingRecipient, givingCut);
-            token.safeTransfer(givingRecipient, givingCut);
+            _payOrCredit(givingRecipient, givingCut);
         }
-        if (recipient != address(0) && payout > 0) token.safeTransfer(recipient, payout);
+        if (recipient != address(0) && payout > 0) _payOrCredit(recipient, payout);
     }
 
     /// @notice Withdraw accumulated bid dividends (and fallback distributions).
@@ -554,6 +561,19 @@ contract RotaCircle is ReentrancyGuard {
             }
         }
         hasWon[recipient] = true;
+    }
+
+    /// @dev Settlement transfers must never be able to block a round. USDC can
+    ///      blacklist addresses, and safeTransfer would then revert settleRound
+    ///      forever, freezing every member's contributions and collateral. Instead:
+    ///      attempt the transfer, and on failure credit the amount to the payee's
+    ///      dividend balance (withdrawable later via withdrawDividends).
+    function _payOrCredit(address to, uint256 amount) internal {
+        (bool ok, bytes memory ret) = address(token).call(abi.encodeCall(token.transfer, (to, amount)));
+        bool sent = ok && (ret.length == 0 ? address(token).code.length > 0 : (ret.length >= 32 && abi.decode(ret, (bool))));
+        if (sent) return;
+        dividendBalance[to] += amount;
+        emit PayoutDeferred(to, amount);
     }
 
     /// @dev Recipient selection. BID mode: the best bidder if still eligible,

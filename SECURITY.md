@@ -38,8 +38,8 @@ an advanced option. Opting out does not revoke the ERC-20 allowance — revoke i
 your wallet if desired.
 
 ### 5. Organizer powers
-The organizer controls the allowlist of invite-only circles/pots and may cancel an
-unfilled circle early. They have **no** access to escrowed funds. `givingRecipient`
+The organizer controls the allowlist of invite-only circles/pots and may cancel any
+not-yet-activated circle — including a full one racing against `activate()`. They have **no** access to escrowed funds. `givingRecipient`
 is fixed at creation — verify it before joining a circle with a giving cut.
 
 ### 6. Dust
@@ -52,6 +52,30 @@ there too.
 Contracts assume a standard, non-fee-on-transfer, non-rebasing 6-decimal ERC-20
 (USDC). Arc's USDC ERC-20 interface satisfies this. Do not deploy circles over exotic
 tokens.
+
+USDC can blacklist addresses. Settlement and withdrawals are hardened against this:
+if a round recipient or `givingRecipient` cannot receive tokens, `settleRound()`
+credits the amount to their withdrawable dividend balance (event `PayoutDeferred`)
+instead of reverting, and GoalPot defers the giving cut to `pendingGiving`
+(retryable by anyone via `flushGiving()`). A frozen address can therefore never
+freeze other members' funds; only its own.
+
+### 8. Reputation scores are farmable
+The factory is permissionless and accepts any ERC-20, so an attacker can run
+circles/pots among their own wallets (even with a worthless token, or with USDC
+cycling between their own addresses and 1-second rounds) to inflate their Credit
+Passport at roughly gas cost. GoalPot credits at most one contribution per member
+per pot (dust-deposit spam is capped), but completions remain farmable. Treat the
+score as a *within-community* signal — verify the circles behind a score (token,
+members, amounts, durations are all on-chain) before extending real trust. Sybil
+resistance (token allowlist, stake- or time-weighted scoring) is future work.
+
+### 9. Early exit vs. giving cut
+`emergencyWithdraw()` is unavailable once a pot is unlockable (target reached or
+deadline passed), so the giving cut cannot be dodged at the finish line. Before
+that point, an exit pays the haircut instead of the giving cut; if an organizer
+sets `givingBps` higher than `earlyExitHaircutBps`, exiting early remains cheaper
+than staying. Choose `earlyExitHaircutBps >= givingBps` if that matters.
 
 ## Frontend limitations
 

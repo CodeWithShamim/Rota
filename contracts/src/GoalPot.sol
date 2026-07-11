@@ -75,6 +75,9 @@ contract GoalPot is ReentrancyGuard {
     uint256 public unlockTotal;
     /// @notice True if the target was reached (drives completion reputation).
     bool public targetReached;
+    /// @notice Giving cuts that could not be transferred (e.g. recipient blocked by
+    ///         the token); anyone may retry the payout via {flushGiving}.
+    uint256 public pendingGiving;
 
     bool private _initialized;
 
@@ -98,9 +101,16 @@ contract GoalPot is ReentrancyGuard {
     event Withdrawn(address indexed member, uint256 principal, uint256 bonus, uint256 givingCut);
     event EarlyExit(address indexed member, uint256 returned, uint256 haircut);
     event GivingPaid(address indexed recipient, uint256 amount);
+    event GivingDeferred(uint256 amount);
     event AllowlistUpdated(address indexed account, bool allowed);
 
     // ---------------------------------------------------------- initializer
+
+    /// @dev Lock the implementation contract. Clones get fresh storage
+    ///      (_initialized = false) and are initialized by the factory as usual.
+    constructor() {
+        _initialized = true;
+    }
 
     /// @notice Initialize a freshly deployed clone. Called once by the factory.
     /// @param p Pot configuration.
@@ -146,11 +156,13 @@ contract GoalPot is ReentrancyGuard {
             if (memberCap != 0 && members.length >= memberCap) revert PotFull();
             members.push(msg.sender);
             isMember[msg.sender] = true;
+            // reputation is credited once per member per pot: per-deposit credit
+            // would let anyone farm the score with unlimited dust deposits
+            reputationRegistry.recordContribution(msg.sender);
         }
 
         deposited[msg.sender] += amount;
         totalDeposited += amount;
-        reputationRegistry.recordContribution(msg.sender);
         emit Deposited(msg.sender, amount, totalDeposited);
         token.safeTransferFrom(msg.sender, address(this), amount);
     }
@@ -187,16 +199,33 @@ contract GoalPot is ReentrancyGuard {
         emit Withdrawn(msg.sender, principal, bonus, givingCut);
 
         if (givingCut > 0) {
-            emit GivingPaid(givingRecipient, givingCut);
-            token.safeTransfer(givingRecipient, givingCut);
+            // never let an unpayable giving recipient (e.g. USDC-blacklisted) block
+            // every member's withdrawal: defer the cut and let anyone retry later
+            if (_tryTransfer(givingRecipient, givingCut)) {
+                emit GivingPaid(givingRecipient, givingCut);
+            } else {
+                pendingGiving += givingCut;
+                emit GivingDeferred(givingCut);
+            }
         }
         token.safeTransfer(msg.sender, gross - givingCut);
     }
 
+    /// @notice Retry paying out deferred giving cuts. Callable by anyone.
+    function flushGiving() external nonReentrant {
+        uint256 amount = pendingGiving;
+        if (amount == 0) revert NothingToWithdraw();
+        pendingGiving = 0;
+        emit GivingPaid(givingRecipient, amount);
+        token.safeTransfer(givingRecipient, amount);
+    }
+
     /// @notice Exit before unlock, forfeiting `earlyExitHaircutBps` of your balance
     ///         to the members who stay. Recorded as a (mild) reputation penalty.
+    ///         Unavailable once the pot is unlockable — use {withdraw} instead (this
+    ///         also prevents dodging the giving cut once the goal is effectively met).
     function emergencyWithdraw() external nonReentrant {
-        if (phase != Phase.LOCKED) revert PotUnlocked();
+        if (phase != Phase.LOCKED || _unlockable()) revert PotUnlocked();
         uint256 principal = deposited[msg.sender];
         if (principal == 0) revert NothingToWithdraw();
 
@@ -247,5 +276,11 @@ contract GoalPot is ReentrancyGuard {
 
     function _unlockable() internal view returns (bool) {
         return totalDeposited >= targetAmount || block.timestamp > deadline;
+    }
+
+    /// @dev Best-effort ERC-20 transfer that reports failure instead of reverting.
+    function _tryTransfer(address to, uint256 amount) internal returns (bool) {
+        (bool ok, bytes memory ret) = address(token).call(abi.encodeCall(token.transfer, (to, amount)));
+        return ok && (ret.length == 0 ? address(token).code.length > 0 : (ret.length >= 32 && abi.decode(ret, (bool))));
     }
 }
