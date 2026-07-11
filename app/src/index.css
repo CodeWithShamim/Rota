@@ -5,6 +5,9 @@
 
 html {
   @apply bg-stone-50 text-stone-900 antialiased;
+  /* Always reserve space for the scrollbar so centered content doesn't
+     shift horizontally when navigating between short and tall pages. */
+  scrollbar-gutter: stable;
 }
 
 html.dark {
