@@ -115,8 +115,6 @@ export function LandingPage() {
           ))}
         </div>
       </section>
-
-      <footer className="text-center text-xs text-stone-400 dark:text-stone-500">{t("landing.testnetNote")}</footer>
     </div>
   );
 }

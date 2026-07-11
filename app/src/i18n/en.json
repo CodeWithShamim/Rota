@@ -447,5 +447,11 @@
     "InsufficientGas": "Not enough gas funds in your wallet.",
     "WrongNetwork": "Your wallet is on the wrong network.",
     "Unknown": "Something went wrong. Please try again."
+  },
+  "footer": {
+    "product": "Product",
+    "resources": "Resources",
+    "rights": "All rights reserved.",
+    "builtOnArc": "Built on Arc"
   }
 }

@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1500 500" width="1500" height="500">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#065f46"/>
+      <stop offset="0.55" stop-color="#064e3b"/>
+      <stop offset="1" stop-color="#022c22"/>
+    </linearGradient>
+    <radialGradient id="coin" cx="0.35" cy="0.3" r="1">
+      <stop offset="0" stop-color="#fde68a"/>
+      <stop offset="0.55" stop-color="#fbbf24"/>
+      <stop offset="1" stop-color="#f59e0b"/>
+    </radialGradient>
+  </defs>
+  <rect width="1500" height="500" fill="url(#bg)"/>
+  <!-- oversized faint wheel bleeding off the right edge -->
+  <g>
+    <path d="M 1262.51 -42.31 A 300 300 0 0 1 1397.49 -42.31" stroke="#fbbf24" stroke-width="84" stroke-linecap="round" fill="none"/>
+  <path d="M 1488.98 -4.41 A 300 300 0 0 1 1584.41 91.02" stroke="#34d399" stroke-opacity="0.06" stroke-width="84" stroke-linecap="round" fill="none"/>
+  <path d="M 1622.31 182.51 A 300 300 0 0 1 1622.31 317.49" stroke="#34d399" stroke-opacity="0.08" stroke-width="84" stroke-linecap="round" fill="none"/>
+  <path d="M 1584.41 408.98 A 300 300 0 0 1 1488.98 504.41" stroke="#34d399" stroke-opacity="0.09" stroke-width="84" stroke-linecap="round" fill="none"/>
+  <path d="M 1397.49 542.31 A 300 300 0 0 1 1262.51 542.31" stroke="#34d399" stroke-opacity="0.11" stroke-width="84" stroke-linecap="round" fill="none"/>
+  <path d="M 1171.02 504.41 A 300 300 0 0 1 1075.59 408.98" stroke="#34d399" stroke-opacity="0.12" stroke-width="84" stroke-linecap="round" fill="none"/>
+  <path d="M 1037.69 317.49 A 300 300 0 0 1 1037.69 182.51" stroke="#34d399" stroke-opacity="0.14" stroke-width="84" stroke-linecap="round" fill="none"/>
+  <path d="M 1075.59 91.02 A 300 300 0 0 1 1171.02 -4.41" stroke="#34d399" stroke-opacity="0.15" stroke-width="84" stroke-linecap="round" fill="none"/>
+  <circle cx="1330" cy="250" r="120" fill="url(#coin)" opacity="0.16"/>
+  <circle cx="1330" cy="250" r="72" fill="none" stroke="#064e3b" stroke-opacity="0.55" stroke-width="15.1" opacity="0.16"/>
+  </g>
+  <circle cx="1330" cy="250" r="430" fill="none" stroke="#34d399" stroke-opacity="0.08" stroke-width="2"/>
+  <!-- the mark -->
+  <path d="M 208.46 135.02 A 118 118 0 0 1 261.54 135.02" stroke="#fbbf24" stroke-width="33" stroke-linecap="round" fill="none"/>
+  <path d="M 297.53 149.93 A 118 118 0 0 1 335.07 187.47" stroke="#34d399" stroke-opacity="0.40" stroke-width="33" stroke-linecap="round" fill="none"/>
+  <path d="M 349.98 223.46 A 118 118 0 0 1 349.98 276.54" stroke="#34d399" stroke-opacity="0.49" stroke-width="33" stroke-linecap="round" fill="none"/>
+  <path d="M 335.07 312.53 A 118 118 0 0 1 297.53 350.07" stroke="#34d399" stroke-opacity="0.58" stroke-width="33" stroke-linecap="round" fill="none"/>
+  <path d="M 261.54 364.98 A 118 118 0 0 1 208.46 364.98" stroke="#34d399" stroke-opacity="0.68" stroke-width="33" stroke-linecap="round" fill="none"/>
+  <path d="M 172.47 350.07 A 118 118 0 0 1 134.93 312.53" stroke="#34d399" stroke-opacity="0.77" stroke-width="33" stroke-linecap="round" fill="none"/>
+  <path d="M 120.02 276.54 A 118 118 0 0 1 120.02 223.46" stroke="#34d399" stroke-opacity="0.86" stroke-width="33" stroke-linecap="round" fill="none"/>
+  <path d="M 134.93 187.47 A 118 118 0 0 1 172.47 149.93" stroke="#34d399" stroke-opacity="0.95" stroke-width="33" stroke-linecap="round" fill="none"/>
+  <circle cx="235" cy="250" r="47" fill="url(#coin)" opacity="1"/>
+  <circle cx="235" cy="250" r="28" fill="none" stroke="#064e3b" stroke-opacity="0.55" stroke-width="5.9" opacity="1"/>
+  <!-- wordmark + taglines -->
+  <g font-family="Inter, 'Noto Sans Bengali', -apple-system, 'Segoe UI', sans-serif">
+    <text x="432" y="248" font-size="126" font-weight="800" fill="#ffffff" letter-spacing="-3">Rota</text>
+    <text x="440" y="318" font-size="42" font-weight="600" fill="#6ee7b7">Your turn always comes.</text>
+    <text x="440" y="372" font-size="27" font-weight="500" fill="#d6d3d1">Global group savings &amp; rotating credit circles &#183; USDC on Arc</text>
+  </g>
+</svg>
