@@ -14,13 +14,15 @@ import {
   RocketIcon,
   SettingsIcon,
   ShieldCheckIcon,
+  SparklesIcon,
   StarIcon,
   TagIcon,
   TargetIcon,
   UsersIcon,
 } from "../components/icons";
 import { Card } from "../components/ui";
-import { FAUCET_URL } from "../config/chain";
+import { activeChain, deployments, explorerAddressUrl, FAUCET_URL } from "../config/chain";
+import { genlayerExplorerAddressUrl, NEWS_CONFIGURED, NEWS_CONTRACT } from "../lib/genlayer";
 
 type IconComponent = ComponentType<{ className?: string }>;
 
@@ -34,6 +36,7 @@ const SECTIONS: readonly { id: string; Icon: IconComponent; titleKey: string }[]
   { id: "autopay", Icon: SettingsIcon, titleKey: "docs.autopayTitle" },
   { id: "giving", Icon: HandHeartIcon, titleKey: "docs.givingTitle" },
   { id: "passport", Icon: StarIcon, titleKey: "docs.passportTitle" },
+  { id: "genlayer", Icon: SparklesIcon, titleKey: "docs.genlayerTitle" },
   { id: "fees", Icon: CoinsIcon, titleKey: "docs.feesTitle" },
   { id: "faq", Icon: HelpCircleIcon, titleKey: "docs.faqTitle" },
   { id: "safety", Icon: AlertTriangleIcon, titleKey: "docs.safetyTitle" },
@@ -96,6 +99,62 @@ function Callout({ title, children }: { title?: string; children: ReactNode }) {
   );
 }
 
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
+
+function shortAddress(address: string): string {
+  return `${address.slice(0, 6)}…${address.slice(-4)}`;
+}
+
+function ContractRow({
+  name,
+  network,
+  address,
+  href,
+  explorer,
+}: {
+  name: string;
+  network: string;
+  address: string;
+  href?: string;
+  explorer?: string;
+}) {
+  const { t } = useTranslation();
+  const inner = (
+    <>
+      <div className="min-w-0">
+        <p className="font-semibold text-stone-900 dark:text-stone-100">{name}</p>
+        <p className="text-xs text-stone-500 dark:text-stone-400">{network}</p>
+      </div>
+      <div className="flex items-center gap-3">
+        <code className="font-mono text-sm text-stone-600 dark:text-stone-300" title={address}>
+          {shortAddress(address)}
+        </code>
+        {href && explorer && (
+          <span className="whitespace-nowrap text-xs font-semibold text-brand-700 opacity-0 transition-opacity group-hover:opacity-100 dark:text-brand-400">
+            {explorer} ↗
+          </span>
+        )}
+      </div>
+    </>
+  );
+  const rowClass =
+    "flex items-center justify-between gap-3 rounded-xl border border-stone-200 bg-white px-4 py-3 shadow-sm dark:border-stone-800 dark:bg-stone-900";
+  if (!href || !explorer) {
+    return <div className={rowClass}>{inner}</div>;
+  }
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      title={t("docs.contractsViewOn", { explorer })}
+      className={`group ${rowClass} transition-colors hover:border-brand-300 hover:bg-brand-50 dark:hover:border-brand-800 dark:hover:bg-brand-900/20`}
+    >
+      {inner}
+    </a>
+  );
+}
+
 export function DocsPage() {
   const { t } = useTranslation();
   const active = useScrollSpy();
@@ -125,6 +184,31 @@ export function DocsPage() {
     title: t(`docs.fee${f}Title`),
     desc: t(`docs.fee${f}Desc`),
   }));
+
+  const explorerName = activeChain.blockExplorers?.default.name;
+  const contracts: { name: string; network: string; address: string; href?: string; explorer?: string }[] = [
+    { name: "RotaFactory", address: deployments.factory },
+    { name: "ReputationRegistry", address: deployments.reputationRegistry },
+    { name: "RotaCircle", address: deployments.circleImplementation },
+    { name: "GoalPot", address: deployments.goalPotImplementation },
+    { name: "USDC", address: deployments.usdc },
+  ]
+    .filter((c) => c.address !== ZERO_ADDRESS)
+    .map((c) => ({
+      ...c,
+      network: activeChain.name,
+      href: explorerAddressUrl(c.address),
+      explorer: explorerName,
+    }));
+  if (NEWS_CONFIGURED) {
+    contracts.push({
+      name: "RotaNewsCurator",
+      address: NEWS_CONTRACT,
+      network: "GenLayer studionet",
+      href: genlayerExplorerAddressUrl(NEWS_CONTRACT),
+      explorer: "GenLayer Explorer",
+    });
+  }
 
   return (
     <div className="pb-16">
@@ -256,6 +340,30 @@ export function DocsPage() {
               {t("passport.formula")}
             </div>
             <p>{t("docs.passportP2")}</p>
+          </DocSection>
+
+          <DocSection id="genlayer" Icon={SparklesIcon} title={t("docs.genlayerTitle")}>
+            <p>{t("docs.genlayerP1")}</p>
+            <p>{t("docs.genlayerP2")}</p>
+            <Link
+              to="/news"
+              className="inline-block text-sm font-semibold text-brand-700 hover:underline dark:text-brand-400"
+            >
+              {t("docs.genlayerCta")} →
+            </Link>
+            {contracts.length > 0 && (
+              <>
+                <h3 className="pt-2 font-semibold text-stone-900 dark:text-stone-100">
+                  {t("docs.contractsTitle")}
+                </h3>
+                <p className="text-sm">{t("docs.contractsIntro")}</p>
+                <div className="space-y-2">
+                  {contracts.map((c) => (
+                    <ContractRow key={c.name} {...c} />
+                  ))}
+                </div>
+              </>
+            )}
           </DocSection>
 
           <DocSection id="fees" Icon={CoinsIcon} title={t("docs.feesTitle")}>

@@ -266,6 +266,9 @@ function NavLinks() {
       <NavLink to="/docs" className={navLinkClass}>
         {t("nav.docs")}
       </NavLink>
+      <NavLink to="/news" className={navLinkClass}>
+        {t("nav.news")}
+      </NavLink>
     </>
   );
 }

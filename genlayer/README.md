@@ -10,11 +10,23 @@ AI-curated news desk:
 - **`rota` category** — news for Rota's domain: ROSCAs / chit funds / group
   savings, financial inclusion, stablecoin remittances.
 
-Each `refresh_news()` transaction makes validators fetch two live Google News
-feeds, ask an LLM to pick and summarize the most relevant stories, agree on the
-result, and store it on-chain as JSON. The app's **/news** page reads it with
+Each `refresh_news()` transaction makes validators fetch live sources — two
+Google News queries plus the news sections of **CoinMarketCap**, **CoinGecko**,
+and **TradingView** — ask an LLM to pick and summarize the most relevant
+stories, agree on the result (non-comparative equivalence principle, so slightly
+different fetches per validator are fine), and store it on-chain as JSON. The app's **/news** page reads it with
 [genlayer-js](https://www.npmjs.com/package/genlayer-js) — no backend, no API keys
 in the frontend.
+
+## Live deployment
+
+| Contract | Network | Address |
+|---|---|---|
+| `RotaNewsCurator` | GenLayer studionet | [`0xDFEE06117b8d91b5b3e17Bfb09C6C0592ea71690`](https://explorer-studio.genlayer.com/address/0xDFEE06117b8d91b5b3e17Bfb09C6C0592ea71690) |
+
+This is the address in `.env.example`; the app reads it via
+`VITE_GENLAYER_NEWS_CONTRACT`. Studionet resets occasionally — if reads start
+failing, redeploy per below and update the variable.
 
 ## Deploy on GenLayer Studio testnet (studionet)
 

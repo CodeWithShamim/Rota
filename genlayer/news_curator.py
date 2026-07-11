@@ -6,19 +6,31 @@ import json
 import typing
 
 # News sources rendered at refresh time. Google News RSS is stable,
-# server-rendered text (no JS), and returns fresh, dated items.
-ARC_FEED = (
-    "https://news.google.com/rss/search"
-    "?q=(Circle+Arc+blockchain)+OR+(Arc+L1+USDC)+OR+(Circle+stablecoin+network)"
-    "&hl=en-US&gl=US&ceid=US:en"
-)
-ROTA_FEED = (
-    "https://news.google.com/rss/search"
-    "?q=ROSCA+OR+%22chit+fund%22+OR+%22rotating+savings%22+OR+%22group+savings%22"
-    "+fintech+OR+blockchain+OR+remittance"
-    "&hl=en-US&gl=US&ceid=US:en"
-)
+# server-rendered text (no JS), and returns fresh, dated items; the crypto
+# market sites are rendered as text and mined for relevant headlines.
+FEEDS: list[tuple[str, str]] = [
+    (
+        "Google News — Arc / Circle / USDC",
+        "https://news.google.com/rss/search"
+        "?q=(Circle+Arc+blockchain)+OR+(Arc+L1+USDC)+OR+(Circle+stablecoin+network)"
+        "&hl=en-US&gl=US&ceid=US:en",
+    ),
+    (
+        "Google News — group savings / ROSCA",
+        "https://news.google.com/rss/search"
+        "?q=ROSCA+OR+%22chit+fund%22+OR+%22rotating+savings%22+OR+%22group+savings%22"
+        "+fintech+OR+blockchain+OR+remittance"
+        "&hl=en-US&gl=US&ceid=US:en",
+    ),
+    ("CoinMarketCap news", "https://coinmarketcap.com/headlines/news/"),
+    ("CoinGecko news", "https://www.coingecko.com/en/news"),
+    (
+        "TradingView crypto news",
+        "https://www.tradingview.com/markets/cryptocurrencies/news/",
+    ),
+]
 
+MAX_CHARS_PER_FEED = 8000
 MAX_ITEMS_PER_CATEGORY = 6
 
 
@@ -39,37 +51,47 @@ class RotaNewsCurator(gl.Contract):
 
     @gl.public.write
     def refresh_news(self) -> typing.Any:
-        arc_feed = ARC_FEED
-        rota_feed = ROTA_FEED
+        # Each validator fetches the feeds itself; content can differ slightly
+        # between fetches, so consensus uses the NON-comparative principle:
+        # the leader's LLM curates, validators only judge that the output is a
+        # faithful curation of *their* copy of the feeds.
+        def fetch_feeds() -> str:
+            parts: list[str] = []
+            for label, url in FEEDS:
+                try:
+                    raw = gl.nondet.web.render(url, mode="text")
+                except Exception:
+                    # A source being down must not kill the whole refresh.
+                    continue
+                parts.append(
+                    f"=== FEED: {label} ({url}) ===\n"
+                    + raw[:MAX_CHARS_PER_FEED]
+                    + f"\n=== END FEED: {label} ==="
+                )
+            if not parts:
+                raise gl.vm.UserError("all news sources unreachable")
+            return "\n\n".join(parts)
 
-        def curate() -> str:
-            arc_raw = gl.nondet.web.render(arc_feed, mode="text")
-            rota_raw = gl.nondet.web.render(rota_feed, mode="text")
-
-            task = f"""
+        task = f"""
 You are the news curator for Rota, a group-savings (ROSCA / chit fund / somiti)
 dApp built in USDC on Arc, Circle's stablecoin-native Layer-1 blockchain.
 
-Below are two raw news feeds. Select the best, most relevant items:
+The input contains several raw news feeds (Google News queries plus the news
+sections of CoinMarketCap, CoinGecko, and TradingView). Select the best, most
+relevant items across all of them:
 
-- category "arc": news about the Arc blockchain, Circle, USDC, and the
-  stablecoin-payments ecosystem. Prefer concrete ecosystem news (launches,
-  integrations, listings, developer tooling) over price speculation.
+- category "arc": news about the Arc blockchain, Circle, USDC, stablecoins,
+  and the stablecoin-payments ecosystem. Prefer concrete ecosystem news
+  (launches, integrations, listings, developer tooling) over price speculation.
 - category "rota": news relevant to Rota's product domain — rotating savings
   (ROSCA, chit funds, tandas, susu, somiti), group/community savings, financial
-  inclusion, and stablecoin remittances (especially South Asia corridors).
+  inclusion, and stablecoin remittances.
 
 Pick at most {MAX_ITEMS_PER_CATEGORY} items per category. Skip duplicates,
-paywalled junk, and items with no clear relevance. Summaries must be neutral,
-factual, and one or two sentences.
-
-=== FEED 1 (arc candidates) ===
-{arc_raw[:20000]}
-=== END FEED 1 ===
-
-=== FEED 2 (rota candidates) ===
-{rota_raw[:20000]}
-=== END FEED 2 ===
+paywalled junk, general crypto price chatter, and items with no clear
+relevance. Summaries must be neutral, factual, and one or two sentences.
+If the exact article link is not visible in the input, set "url" to the feed
+page the story appeared on (the URL in the FEED header); never invent URLs.
 
 Respond ONLY with a JSON array in exactly this shape (no prose, no markdown
 fences; must parse with a strict JSON parser):
@@ -85,18 +107,20 @@ fences; must parse with a strict JSON parser):
   }}
 ]
 """
-            result = gl.nondet.exec_prompt(task)
-            result = result.replace("```json", "").replace("```", "").strip()
-            # Round-trip so validators compare normalized JSON.
-            return json.dumps(json.loads(result))
-
-        curated = gl.eq_principle.prompt_comparative(
-            curate,
-            "Both outputs must be valid JSON arrays of news items covering "
-            "substantially the same stories, with matching categories and "
-            "urls drawn from the same feeds; summaries may be worded "
-            "differently but must be factually consistent",
+        criteria = """
+The output is a valid JSON array of news-item objects with exactly the keys
+title, url, source, date, summary, category, relevance. Every category is
+"arc" or "rota" and each category has at most 6 items. The items plausibly
+correspond to stories present in the input feeds (headlines may be reworded
+slightly and the validator's copy of the feeds may differ a little from the
+leader's, including some feeds being missing — that is acceptable). Summaries
+are neutral and consistent with the headlines. No fabricated stories on topics
+absent from the input.
+"""
+        curated = gl.eq_principle.prompt_non_comparative(
+            fetch_feeds, task=task, criteria=criteria
         )
+        curated = curated.replace("```json", "").replace("```", "").strip()
 
         # Deterministic sanity check before committing to storage.
         items = json.loads(curated)

@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { Route, Routes } from "react-router-dom";
 import { Footer } from "./components/Footer";
 import { Header } from "./components/Header";
@@ -10,6 +11,9 @@ import { LandingPage } from "./pages/Landing";
 import { PassportPage } from "./pages/Passport";
 import { PotDetailPage } from "./pages/PotDetail";
 
+// Lazy: keeps genlayer-js (GenLayer news curator client) out of the main bundle.
+const NewsPage = lazy(() => import("./pages/News").then((m) => ({ default: m.NewsPage })));
+
 export default function App() {
   return (
     <div className="flex min-h-screen flex-col">
@@ -18,6 +22,14 @@ export default function App() {
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/docs" element={<DocsPage />} />
+          <Route
+            path="/news"
+            element={
+              <Suspense fallback={null}>
+                <NewsPage />
+              </Suspense>
+            }
+          />
           <Route path="/app" element={<DashboardPage />} />
           <Route path="/app/create" element={<CreatePage />} />
           <Route path="/app/circle/:address" element={<CircleDetailPage />} />
