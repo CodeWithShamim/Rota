@@ -51,15 +51,15 @@ export function PotDetailPage() {
       <Card>
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold text-stone-900">{p.name}</h1>
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-2xl font-bold text-stone-900 dark:text-stone-100">{p.name}</h1>
               <Badge tone={locked ? "blue" : "brand"}>{t(locked ? "status.locked" : "status.unlocked")}</Badge>
               {p.targetReached && <Badge tone="brand">{t("pot.targetReached")}</Badge>}
             </div>
-            <p className="mt-1 text-sm text-stone-500">
+            <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">
               {t("pot.target")}: <Money amount={p.targetAmount} />
             </p>
-            <p className="mt-1 text-sm text-stone-500">
+            <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">
               {locked ? (
                 <>
                   {t("pot.unlocksWhen", { date: formatDate(p.deadline, i18n.language) })} ·{" "}
@@ -70,7 +70,7 @@ export function PotDetailPage() {
               )}
             </p>
             {p.givingBps > 0n && (
-              <p className="mt-1 text-xs text-brand-700">
+              <p className="mt-1 text-xs text-brand-700 dark:text-brand-400">
                 🤲 {t("pot.givingNote", { percent: bpsToPercent(p.givingBps), recipient: shortAddress(p.givingRecipient) })}
               </p>
             )}
@@ -87,7 +87,7 @@ export function PotDetailPage() {
         <Card>
           <SectionTitle>{t("pot.deposit")}</SectionTitle>
           {p.minContribution > 0n && (
-            <p className="mb-2 text-xs text-stone-500">
+            <p className="mb-2 text-xs text-stone-500 dark:text-stone-400">
               {t("pot.minDeposit", { amount: moneyText(p.minContribution, i18n.language) })}
             </p>
           )}
@@ -119,20 +119,20 @@ export function PotDetailPage() {
       )}
       {p.deposited > 0n && (p.unlockable || !locked) && (
         <Card>
-          <p className="mb-1 text-sm font-medium text-stone-800">
+          <p className="mb-1 text-sm font-medium text-stone-800 dark:text-stone-200">
             {t("pot.withdrawAmount", { amount: moneyText(p.deposited, i18n.language) })}
           </p>
-          {p.totalHaircut > 0n && <p className="mb-2 text-xs text-stone-500">{t("pot.bonusNote")}</p>}
+          {p.totalHaircut > 0n && <p className="mb-2 text-xs text-stone-500 dark:text-stone-400">{t("pot.bonusNote")}</p>}
           <Button onClick={() => void tx("withdraw")}>{t("pot.withdraw")}</Button>
         </Card>
       )}
 
       {/* emergency exit */}
       {locked && !p.unlockable && p.deposited > 0n && (
-        <Card className="border-amber-200">
+        <Card className="border-amber-200 dark:border-amber-900">
           {confirmExit ? (
             <div className="space-y-3">
-              <p className="text-sm text-amber-800">
+              <p className="text-sm text-amber-800 dark:text-amber-200">
                 ⚠️ {t("pot.emergencyWarning", { percent: bpsToPercent(p.earlyExitHaircutBps) })}
               </p>
               <div className="flex gap-2">
@@ -145,7 +145,10 @@ export function PotDetailPage() {
               </div>
             </div>
           ) : (
-            <button className="text-sm font-medium text-amber-700 hover:underline" onClick={() => setConfirmExit(true)}>
+            <button
+              className="text-sm font-medium text-amber-700 hover:underline dark:text-amber-300"
+              onClick={() => setConfirmExit(true)}
+            >
               {t("pot.emergencyWithdraw")} →
             </button>
           )}
@@ -156,12 +159,15 @@ export function PotDetailPage() {
       <Card>
         <SectionTitle>{t("pot.leaderboard")}</SectionTitle>
         {leaderboard.length === 0 ? (
-          <p className="py-3 text-center text-sm text-stone-500">{t("dashboard.empty")}</p>
+          <p className="py-3 text-center text-sm text-stone-500 dark:text-stone-400">{t("dashboard.empty")}</p>
         ) : (
           <ul className="space-y-1.5">
             {leaderboard.map((m, i) => (
-              <li key={m} className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm odd:bg-stone-50">
-                <span className="w-6 text-xs text-stone-400">{i + 1}.</span>
+              <li
+                key={m}
+                className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm odd:bg-stone-50 dark:odd:bg-stone-800/50"
+              >
+                <span className="w-6 text-xs text-stone-400 dark:text-stone-500">{i + 1}.</span>
                 <span className="font-mono">{shortAddress(m)}</span>
                 {m === p.organizer && <Badge tone="stone">{t("common.organizer")}</Badge>}
                 {user && m.toLowerCase() === user.toLowerCase() && <Badge tone="blue">{t("common.you")}</Badge>}
@@ -185,7 +191,7 @@ export function PotDetailPage() {
         <SectionTitle>{t("circle.activity")}</SectionTitle>
         <ActivityFeed items={p.activity} />
       </Card>
-      <p className="text-center font-mono text-xs text-stone-400">{p.address}</p>
+      <p className="break-all text-center font-mono text-xs text-stone-400 dark:text-stone-500">{p.address}</p>
     </div>
   );
 }

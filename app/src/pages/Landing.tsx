@@ -26,15 +26,15 @@ export function LandingPage() {
     <div className="space-y-16 pb-16">
       {/* hero */}
       <section className="pt-10 text-center sm:pt-16">
-        <p className="mb-3 text-sm font-semibold uppercase tracking-widest text-brand-700">
+        <p className="mb-3 text-sm font-semibold uppercase tracking-widest text-brand-700 dark:text-brand-400">
           {t("landing.heroNames")}
         </p>
-        <h1 className="mx-auto max-w-3xl text-4xl font-extrabold tracking-tight text-stone-900 sm:text-5xl">
+        <h1 className="mx-auto max-w-3xl text-4xl font-extrabold tracking-tight text-stone-900 dark:text-stone-100 sm:text-5xl">
           {t("landing.heroTitle")}
         </h1>
-        <p className="mx-auto mt-4 max-w-2xl text-lg text-stone-600">{t("landing.heroSubtitle")}</p>
-        <p className="mt-6 text-2xl font-bold text-brand-700">“{t("landing.promise")}”</p>
-        <div className="mt-8 flex justify-center gap-3">
+        <p className="mx-auto mt-4 max-w-2xl text-lg text-stone-600 dark:text-stone-400">{t("landing.heroSubtitle")}</p>
+        <p className="mt-6 text-2xl font-bold text-brand-700 dark:text-brand-400">“{t("landing.promise")}”</p>
+        <div className="mt-8 flex flex-wrap justify-center gap-3">
           <Link
             to="/app/create"
             className="rounded-xl bg-brand-600 px-6 py-3 font-semibold text-white shadow-md hover:bg-brand-700"
@@ -43,7 +43,7 @@ export function LandingPage() {
           </Link>
           <a
             href="#how"
-            className="rounded-xl border border-stone-300 bg-white px-6 py-3 font-semibold text-stone-700 hover:bg-stone-50"
+            className="rounded-xl border border-stone-300 bg-white px-6 py-3 font-semibold text-stone-700 hover:bg-stone-50 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-300 dark:hover:bg-stone-800"
           >
             {t("landing.heroSecondary")}
           </a>
@@ -52,15 +52,15 @@ export function LandingPage() {
 
       {/* how it works */}
       <section id="how">
-        <h2 className="mb-6 text-center text-2xl font-bold text-stone-900">{t("landing.howTitle")}</h2>
+        <h2 className="mb-6 text-center text-2xl font-bold text-stone-900 dark:text-stone-100">{t("landing.howTitle")}</h2>
         <div className="grid gap-4 sm:grid-cols-3">
           {steps.map((s) => (
             <Card key={s.n} className="text-center">
-              <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-brand-100 text-lg font-bold text-brand-800">
+              <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-brand-100 text-lg font-bold text-brand-800 dark:bg-brand-900/50 dark:text-brand-200">
                 {s.n}
               </div>
-              <h3 className="font-semibold text-stone-900">{s.title}</h3>
-              <p className="mt-1 text-sm text-stone-600">{s.desc}</p>
+              <h3 className="font-semibold text-stone-900 dark:text-stone-100">{s.title}</h3>
+              <p className="mt-1 text-sm text-stone-600 dark:text-stone-400">{s.desc}</p>
             </Card>
           ))}
         </div>
@@ -68,13 +68,13 @@ export function LandingPage() {
 
       {/* products */}
       <section>
-        <h2 className="mb-6 text-center text-2xl font-bold text-stone-900">{t("landing.productsTitle")}</h2>
+        <h2 className="mb-6 text-center text-2xl font-bold text-stone-900 dark:text-stone-100">{t("landing.productsTitle")}</h2>
         <div className="grid gap-4 sm:grid-cols-3">
           {products.map((p) => (
             <Card key={p.name} className="transition-shadow hover:shadow-md">
               <div className="text-3xl">{p.icon}</div>
-              <h3 className="mt-3 text-lg font-bold text-stone-900">{p.name}</h3>
-              <p className="mt-1 text-sm text-stone-600">{p.desc}</p>
+              <h3 className="mt-3 text-lg font-bold text-stone-900 dark:text-stone-100">{p.name}</h3>
+              <p className="mt-1 text-sm text-stone-600 dark:text-stone-400">{p.desc}</p>
             </Card>
           ))}
         </div>
@@ -97,21 +97,21 @@ export function LandingPage() {
 
       {/* trust */}
       <section>
-        <h2 className="mb-6 text-center text-2xl font-bold text-stone-900">{t("landing.trustTitle")}</h2>
+        <h2 className="mb-6 text-center text-2xl font-bold text-stone-900 dark:text-stone-100">{t("landing.trustTitle")}</h2>
         <div className="grid gap-4 sm:grid-cols-2">
           {trust.map((item) => (
             <Card key={item.title} className="flex gap-4">
               <div className="text-2xl">{item.icon}</div>
               <div>
-                <h3 className="font-semibold text-stone-900">{item.title}</h3>
-                <p className="mt-1 text-sm text-stone-600">{item.desc}</p>
+                <h3 className="font-semibold text-stone-900 dark:text-stone-100">{item.title}</h3>
+                <p className="mt-1 text-sm text-stone-600 dark:text-stone-400">{item.desc}</p>
               </div>
             </Card>
           ))}
         </div>
       </section>
 
-      <footer className="text-center text-xs text-stone-400">{t("landing.testnetNote")}</footer>
+      <footer className="text-center text-xs text-stone-400 dark:text-stone-500">{t("landing.testnetNote")}</footer>
     </div>
   );
 }

@@ -1,9 +1,10 @@
 import { useToast } from "../hooks/toast";
 
 const toneStyles = {
-  info: "border-sky-200 bg-sky-50 text-sky-900",
-  success: "border-brand-200 bg-brand-50 text-brand-900",
-  error: "border-red-200 bg-red-50 text-red-900",
+  info: "border-sky-200 bg-sky-50 text-sky-900 dark:border-sky-800 dark:bg-sky-950 dark:text-sky-100",
+  success:
+    "border-brand-200 bg-brand-50 text-brand-900 dark:border-brand-800 dark:bg-brand-950 dark:text-brand-100",
+  error: "border-red-200 bg-red-50 text-red-900 dark:border-red-800 dark:bg-red-950 dark:text-red-100",
 } as const;
 
 export function Toasts() {

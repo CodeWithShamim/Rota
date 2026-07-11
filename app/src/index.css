@@ -6,3 +6,8 @@
 html {
   @apply bg-stone-50 text-stone-900 antialiased;
 }
+
+html.dark {
+  @apply bg-stone-950 text-stone-100;
+  color-scheme: dark;
+}

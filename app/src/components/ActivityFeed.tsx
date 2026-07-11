@@ -59,16 +59,16 @@ export function ActivityFeed({ items }: { items: ActivityItem[] }) {
     .map((item) => ({ item, text: describe(item, t, i18n.language) }))
     .filter((r) => r.text !== null);
   if (rows.length === 0) {
-    return <p className="py-4 text-center text-sm text-stone-500">{t("common.loading")}</p>;
+    return <p className="py-4 text-center text-sm text-stone-500 dark:text-stone-400">{t("common.loading")}</p>;
   }
   return (
     <ul className="space-y-1">
       {rows.map(({ item, text }) => (
         <li
           key={`${item.txHash}-${item.logIndex}`}
-          className="flex items-baseline gap-2 rounded-lg px-2 py-1.5 text-sm text-stone-700 odd:bg-stone-50"
+          className="flex items-baseline gap-2 rounded-lg px-2 py-1.5 text-sm text-stone-700 odd:bg-stone-50 dark:text-stone-300 dark:odd:bg-stone-800/50"
         >
-          <span className="shrink-0 text-xs text-stone-400">#{item.blockNumber.toString()}</span>
+          <span className="shrink-0 text-xs text-stone-400 dark:text-stone-500">#{item.blockNumber.toString()}</span>
           <span>{text}</span>
         </li>
       ))}

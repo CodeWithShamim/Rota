@@ -41,10 +41,10 @@ function OpenPhasePanel({ c }: { c: CircleDetail }) {
       {!c.isMember && !full && (
         <Card>
           {c.inviteOnly && !c.allowlisted ? (
-            <p className="text-sm text-amber-700">{t("circle.notInvitedNote")}</p>
+            <p className="text-sm text-amber-700 dark:text-amber-300">{t("circle.notInvitedNote")}</p>
           ) : (
             <>
-              <p className="mb-3 text-sm text-stone-600">
+              <p className="mb-3 text-sm text-stone-600 dark:text-stone-400">
                 {t("circle.joinCollateralNote", { amount: moneyText(collateral, i18n.language) })}
               </p>
               <ApproveThen spender={c.address} amount={collateral}>
@@ -56,7 +56,7 @@ function OpenPhasePanel({ c }: { c: CircleDetail }) {
       )}
       {full && (
         <Card>
-          <p className="mb-3 text-sm text-stone-600">{t("circle.activateHint")}</p>
+          <p className="mb-3 text-sm text-stone-600 dark:text-stone-400">{t("circle.activateHint")}</p>
           <Button onClick={() => void tx("activate")}>{t("circle.activate")}</Button>
         </Card>
       )}
@@ -66,7 +66,7 @@ function OpenPhasePanel({ c }: { c: CircleDetail }) {
       </Card>
       {canCancel && !full && c.memberCount > 0n && (
         <Card>
-          <p className="mb-3 text-sm text-stone-600">{t("circle.cancelHint")}</p>
+          <p className="mb-3 text-sm text-stone-600 dark:text-stone-400">{t("circle.cancelHint")}</p>
           <Button variant="danger" onClick={() => void tx("cancel")}>
             {t("circle.cancelCircle")}
           </Button>
@@ -89,8 +89,8 @@ function BidPanel({ c }: { c: CircleDetail }) {
   return (
     <Card>
       <SectionTitle>🏷️ {t("circle.bidPanelTitle")}</SectionTitle>
-      <p className="text-sm text-stone-600">{t("circle.bidExplain")}</p>
-      <p className="mt-3 text-sm font-medium text-stone-800">
+      <p className="text-sm text-stone-600 dark:text-stone-400">{t("circle.bidExplain")}</p>
+      <p className="mt-3 text-sm font-medium text-stone-800 dark:text-stone-200">
         {c.bestBid.exists
           ? t("circle.bidCurrent", {
               percent: bpsToPercent(c.bestBid.discountBps),
@@ -98,7 +98,7 @@ function BidPanel({ c }: { c: CircleDetail }) {
             })
           : t("circle.bidNone")}
       </p>
-      <p className="mt-1 text-xs text-stone-500">
+      <p className="mt-1 text-xs text-stone-500 dark:text-stone-400">
         {windowOpen ? (
           <>
             {t("circle.bidWindowCloses", { when: "" })} <Countdown target={c.bidWindowEnd} />
@@ -110,12 +110,12 @@ function BidPanel({ c }: { c: CircleDetail }) {
       {windowOpen && eligible && (
         <div className="mt-3 flex items-end gap-2">
           <label className="flex-1">
-            <span className="mb-1 block text-xs font-medium text-stone-600">
+            <span className="mb-1 block text-xs font-medium text-stone-600 dark:text-stone-400">
               {t("circle.bidYours")} (≤ {bpsToPercent(c.maxDiscountBps)})
             </span>
             <input
               inputMode="decimal"
-              className="w-full rounded-xl border border-stone-300 px-3 py-2"
+              className="w-full rounded-xl border border-stone-300 bg-transparent px-3 py-2 dark:border-stone-700"
               value={bidPct}
               placeholder="10"
               onChange={(e) => setBidPct(e.target.value)}
@@ -147,8 +147,8 @@ function ActivePhasePanel({ c }: { c: CircleDetail }) {
       {c.mode === Mode.BID && <BidPanel c={c} />}
 
       {c.isMember && c.inDefault && (
-        <Card className="border-red-200 bg-red-50">
-          <p className="mb-2 text-sm text-red-800">{t("circle.cureExplain")}</p>
+        <Card className="border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950">
+          <p className="mb-2 text-sm text-red-800 dark:text-red-200">{t("circle.cureExplain")}</p>
           <ApproveThen spender={c.address} amount={c.cureCost}>
             <Button variant="danger" onClick={() => void tx("cureDefault")}>
               {t("circle.cureDefault", { amount: moneyText(c.cureCost, i18n.language) })}
@@ -159,10 +159,10 @@ function ActivePhasePanel({ c }: { c: CircleDetail }) {
 
       {c.isMember && !c.hasContributedNow && roundOpen && (
         <Card>
-          <p className="mb-1 text-sm font-medium text-stone-800">
+          <p className="mb-1 text-sm font-medium text-stone-800 dark:text-stone-200">
             {t("circle.deadlineIn", { when: "" })} <Countdown target={c.deadline} />
           </p>
-          <p className="mb-3 text-xs text-stone-500">
+          <p className="mb-3 text-xs text-stone-500 dark:text-stone-400">
             {t("circle.waitingContributions", {
               paid: c.roundContributionCount.toString(),
               total: c.memberCap.toString(),
@@ -177,8 +177,8 @@ function ActivePhasePanel({ c }: { c: CircleDetail }) {
       )}
       {c.isMember && c.hasContributedNow && (
         <Card>
-          <p className="text-sm font-semibold text-brand-700">{t("circle.contributed")}</p>
-          <p className="mt-1 text-xs text-stone-500">
+          <p className="text-sm font-semibold text-brand-700 dark:text-brand-400">{t("circle.contributed")}</p>
+          <p className="mt-1 text-xs text-stone-500 dark:text-stone-400">
             {t("circle.waitingContributions", {
               paid: c.roundContributionCount.toString(),
               total: c.memberCap.toString(),
@@ -190,14 +190,14 @@ function ActivePhasePanel({ c }: { c: CircleDetail }) {
       {c.isMember && (
         <Card>
           <SectionTitle>⚡ {t("circle.autopayTitle")}</SectionTitle>
-          <p className="text-sm text-stone-600">
+          <p className="text-sm text-stone-600 dark:text-stone-400">
             {t("circle.autopayExplain", { amount: moneyText(c.contributionAmount, i18n.language) })}
           </p>
           {c.autoPayOptIn ? (
             <div className="mt-3 space-y-2">
               <Badge tone="brand">{t("badges.autopayOn")}</Badge>
               {autopayRoundsCovered < remainingRounds && (
-                <p className="text-xs text-amber-700">
+                <p className="text-xs text-amber-700 dark:text-amber-300">
                   {t("circle.autopayAllowanceWarning", { rounds: autopayRoundsCovered.toString() })}
                 </p>
               )}
@@ -219,7 +219,7 @@ function ActivePhasePanel({ c }: { c: CircleDetail }) {
 
       {settleable && (
         <Card>
-          <p className="mb-3 text-sm text-stone-600">{t("circle.settleHint")}</p>
+          <p className="mb-3 text-sm text-stone-600 dark:text-stone-400">{t("circle.settleHint")}</p>
           <Button onClick={() => void tx("settleRound")}>{t("circle.settle")}</Button>
         </Card>
       )}
@@ -275,8 +275,8 @@ function RoundTimeline({ c }: { c: CircleDetail }) {
               i < current
                 ? "bg-brand-600 text-white"
                 : i === current && c.phase === Phase.ACTIVE
-                  ? "border-2 border-brand-600 text-brand-700"
-                  : "bg-stone-100 text-stone-400"
+                  ? "border-2 border-brand-600 text-brand-700 dark:text-brand-400"
+                  : "bg-stone-100 text-stone-400 dark:bg-stone-800 dark:text-stone-500"
             }`}
             title={`${t("common.round")} ${i + 1}`}
           >
@@ -302,8 +302,11 @@ function MembersList({ c }: { c: CircleDetail }) {
         {order.map((m, i) => {
           const contributed = c.contributionMatrix[round]?.[m.toLowerCase()] ?? false;
           return (
-            <li key={m} className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm odd:bg-stone-50">
-              <span className="w-6 text-xs text-stone-400">{i + 1}.</span>
+            <li
+              key={m}
+              className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm odd:bg-stone-50 dark:odd:bg-stone-800/50"
+            >
+              <span className="w-6 text-xs text-stone-400 dark:text-stone-500">{i + 1}.</span>
               <span className="font-mono">{shortAddress(m)}</span>
               {m === c.organizer && <Badge tone="stone">{t("common.organizer")}</Badge>}
               {user && m.toLowerCase() === user.toLowerCase() && <Badge tone="blue">{t("common.you")}</Badge>}
@@ -350,35 +353,35 @@ export function CircleDetailPage() {
       <Card>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold text-stone-900">{c.name}</h1>
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-2xl font-bold text-stone-900 dark:text-stone-100">{c.name}</h1>
               <Badge tone={phaseTones[c.phase]}>{t(phaseLabels[c.phase])}</Badge>
               <Badge tone="stone">{t(modeLabels[c.mode])}</Badge>
             </div>
-            <p className="mt-1 text-sm text-stone-500">
+            <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">
               <Money amount={c.contributionAmount} /> {t("common.perRound")} · {c.memberCap.toString()}{" "}
               {t("common.members")}
             </p>
             {c.givingBps > 0n && (
-              <p className="mt-1 text-xs text-brand-700">
+              <p className="mt-1 text-xs text-brand-700 dark:text-brand-400">
                 🤲 {t("circle.givingNote", { percent: bpsToPercent(c.givingBps), recipient: shortAddress(c.givingRecipient) })}
               </p>
             )}
           </div>
           <div className="text-right">
-            <p className="text-xs uppercase tracking-wide text-stone-400">{t("circle.potSize")}</p>
+            <p className="text-xs uppercase tracking-wide text-stone-400 dark:text-stone-500">{t("circle.potSize")}</p>
             <Money amount={potSize} big />
           </div>
         </div>
         {c.phase === Phase.ACTIVE && c.isMember && (
-          <div className="mt-3 rounded-xl bg-stone-50 p-3 text-sm">
-            <span className="font-medium text-stone-700">{t("circle.yourPosition")}: </span>
+          <div className="mt-3 rounded-xl bg-stone-50 p-3 text-sm dark:bg-stone-800/50">
+            <span className="font-medium text-stone-700 dark:text-stone-300">{t("circle.yourPosition")}: </span>
             {c.mode === Mode.BID ? (
               <span>{t("circle.positionUnknown")}</span>
             ) : myOrderIndex >= 0 ? (
               <span>{t("circle.position", { n: myOrderIndex + 1 })}</span>
             ) : null}
-            {isNext && <span className="ml-2 font-semibold text-brand-700">🎉 {t("circle.youAreNext")}</span>}
+            {isNext && <span className="ml-2 font-semibold text-brand-700 dark:text-brand-400">🎉 {t("circle.youAreNext")}</span>}
           </div>
         )}
         {c.phase === Phase.OPEN && (
@@ -400,7 +403,7 @@ export function CircleDetailPage() {
         <SectionTitle>{t("circle.activity")}</SectionTitle>
         <ActivityFeed items={c.activity} />
       </Card>
-      <p className="text-center text-xs text-stone-400">
+      <p className="break-all text-center text-xs text-stone-400 dark:text-stone-500">
         <span className="font-mono">{c.address}</span> · {i18n.language}
       </p>
     </div>

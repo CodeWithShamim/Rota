@@ -21,15 +21,15 @@ export function Money({
   if (big) {
     return (
       <div>
-        <div className="text-3xl font-bold tracking-tight text-stone-900">{usdc}</div>
-        {local && <div className="text-sm text-stone-500">≈ {local}</div>}
+        <div className="text-3xl font-bold tracking-tight text-stone-900 dark:text-stone-100">{usdc}</div>
+        {local && <div className="text-sm text-stone-500 dark:text-stone-400">≈ {local}</div>}
       </div>
     );
   }
   return (
     <span className="whitespace-nowrap">
-      <span className="font-semibold text-stone-900">{usdc}</span>
-      {local && <span className="ml-1 text-xs text-stone-500">≈ {local}</span>}
+      <span className="font-semibold text-stone-900 dark:text-stone-100">{usdc}</span>
+      {local && <span className="ml-1 text-xs text-stone-500 dark:text-stone-400">≈ {local}</span>}
     </span>
   );
 }

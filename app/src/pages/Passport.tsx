@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams } from "react-router-dom";
-import { isAddress, verifyMessage, type Address } from "viem";
-import { useAccount, useSignMessage } from "wagmi";
+import { isAddress, type Address } from "viem";
+import { useAccount, usePublicClient, useSignMessage } from "wagmi";
 import { QRCode } from "../components/ShareInvite";
 import { Badge, Button, Card, EmptyState, SectionTitle, Skeleton } from "../components/ui";
+import { useToast } from "../hooks/toast";
 import { useReputation } from "../hooks/useRota";
 import { shortAddress } from "../lib/format";
 
@@ -24,6 +25,8 @@ export function PassportPage() {
     params.address && isAddress(params.address) ? (params.address as Address) : connected;
   const { data, isLoading } = useReputation(subject);
   const { signMessageAsync } = useSignMessage();
+  const publicClient = usePublicClient();
+  const toast = useToast();
   const [verified, setVerified] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -50,14 +53,21 @@ export function PassportPage() {
   ];
 
   async function verify() {
-    if (!connected) return;
+    if (!connected || !publicClient) return;
     const message = `Rota Credit Passport ownership proof for ${subject} at ${new Date().toISOString()}`;
     try {
       const signature = await signMessageAsync({ message });
-      const ok = await verifyMessage({ address: connected, message, signature });
+      // Client-side verification supports smart accounts (ERC-1271/6492), not just EOAs.
+      const ok = await publicClient.verifyMessage({ address: connected, message, signature });
       setVerified(ok);
+      if (ok) {
+        toast.push("success", t("passport.verified"), 5000);
+      } else {
+        toast.push("error", t("passport.verifyFailed"), 5000);
+      }
     } catch {
       setVerified(false);
+      toast.push("error", t("passport.verifyFailed"), 5000);
     }
   }
 
@@ -78,13 +88,15 @@ export function PassportPage() {
 
       <Card>
         <SectionTitle>{t("passport.breakdown")}</SectionTitle>
-        <ul className="divide-y divide-stone-100">
+        <ul className="divide-y divide-stone-100 dark:divide-stone-800">
           {rows.map((r) => (
             <li key={r.label} className="flex items-center justify-between py-2 text-sm">
-              <span className="text-stone-600">{r.label}</span>
+              <span className="text-stone-600 dark:text-stone-400">{r.label}</span>
               <span className="flex items-center gap-3">
-                <span className="font-semibold text-stone-900">{r.count.toString()}</span>
-                <span className={`w-20 text-right font-mono text-xs ${r.points < 0n ? "text-red-600" : "text-brand-700"}`}>
+                <span className="font-semibold text-stone-900 dark:text-stone-100">{r.count.toString()}</span>
+                <span
+                  className={`w-20 text-right font-mono text-xs ${r.points < 0n ? "text-red-600 dark:text-red-400" : "text-brand-700 dark:text-brand-400"}`}
+                >
                   {r.points >= 0n ? "+" : ""}
                   {t("passport.points", { count: Number(r.points) })}
                 </span>
@@ -92,16 +104,16 @@ export function PassportPage() {
             </li>
           ))}
         </ul>
-        <p className="mt-3 rounded-lg bg-stone-50 p-2 font-mono text-xs text-stone-500">{t("passport.formula")}</p>
+        <p className="mt-3 rounded-lg bg-stone-50 p-2 font-mono text-xs text-stone-500 dark:bg-stone-800/50 dark:text-stone-400">{t("passport.formula")}</p>
       </Card>
 
       <Card>
         <SectionTitle>{t("passport.shareTitle")}</SectionTitle>
-        <p className="mb-3 text-sm text-stone-600">{t("passport.shareHint")}</p>
+        <p className="mb-3 text-sm text-stone-600 dark:text-stone-400">{t("passport.shareHint")}</p>
         <div className="flex flex-col items-start gap-4 sm:flex-row">
           <QRCode value={shareUrl} size={120} />
           <div className="min-w-0 flex-1 space-y-2">
-            <code className="block truncate rounded-lg bg-stone-100 px-3 py-2 text-xs">{shareUrl}</code>
+            <code className="block truncate rounded-lg bg-stone-100 px-3 py-2 text-xs dark:bg-stone-800">{shareUrl}</code>
             <div className="flex flex-wrap gap-2">
               <Button
                 variant="secondary"
@@ -123,7 +135,7 @@ export function PassportPage() {
                 </Button>
               )}
             </div>
-            {isOwn && <p className="text-xs text-stone-400">{t("passport.verifyExplain")}</p>}
+            {isOwn && <p className="text-xs text-stone-400 dark:text-stone-500">{t("passport.verifyExplain")}</p>}
           </div>
         </div>
       </Card>
@@ -131,7 +143,7 @@ export function PassportPage() {
       <Card>
         <SectionTitle>{t("passport.history")}</SectionTitle>
         {data.history.length === 0 ? (
-          <p className="py-3 text-center text-sm text-stone-500">{t("passport.noHistory")}</p>
+          <p className="py-3 text-center text-sm text-stone-500 dark:text-stone-400">{t("passport.noHistory")}</p>
         ) : (
           <ul className="space-y-1">
             {data.history.map((h) => {
@@ -139,10 +151,10 @@ export function PassportPage() {
               return (
                 <li
                   key={`${h.txHash}-${h.logIndex}`}
-                  className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm odd:bg-stone-50"
+                  className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm odd:bg-stone-50 dark:odd:bg-stone-800/50"
                 >
                   <Badge tone={meta?.tone ?? "stone"}>{meta ? t(meta.key) : h.eventName}</Badge>
-                  <span className="ml-auto font-mono text-xs text-stone-400">
+                  <span className="ml-auto font-mono text-xs text-stone-400 dark:text-stone-500">
                     {shortAddress(String(h.args.reporter ?? ""))} · #{h.blockNumber.toString()}
                   </span>
                 </li>

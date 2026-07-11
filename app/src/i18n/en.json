@@ -50,6 +50,7 @@
   "header": {
     "connect": "Connect wallet",
     "disconnect": "Disconnect",
+    "copyAddress": "Copy address",
     "connecting": "Connecting…",
     "noWallet": "No injected wallet found — install MetaMask or a compatible wallet.",
     "wrongNetwork": "Wrong network",
@@ -57,7 +58,9 @@
     "language": "Language",
     "currency": "Display currency",
     "notifications": "Notifications",
-    "balance": "Balance"
+    "theme": "Light/dark theme",
+    "balance": "Balance",
+    "navigation": "Navigation"
   },
   "common": {
     "loading": "Loading…",
@@ -280,6 +283,7 @@
     "shareHint": "Show this to a lender, landlord, or employer — anyone can verify it on-chain.",
     "verifyOwnership": "Verify I own this address",
     "verified": "Ownership verified — signature checks out.",
+    "verifyFailed": "Verification failed — the signature didn't match this address. Make sure the connected wallet is the one shown on this passport, then try again.",
     "verifyExplain": "Signs a message with your wallet (free, off-chain) proving you control this passport.",
     "noHistory": "No activity yet. Join a circle to start building your score.",
     "points": "{{count}} pts"

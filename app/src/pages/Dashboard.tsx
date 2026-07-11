@@ -49,8 +49,8 @@ function CircleCard({ c }: { c: CircleSummary }) {
       <Card className="transition-shadow hover:shadow-md">
         <div className="flex items-start justify-between gap-2">
           <div>
-            <h3 className="font-bold text-stone-900">{c.name}</h3>
-            <p className="text-xs text-stone-500">
+            <h3 className="font-bold text-stone-900 dark:text-stone-100">{c.name}</h3>
+            <p className="text-xs text-stone-500 dark:text-stone-400">
               {t(modeLabels[c.mode])} · {t(phaseLabels[c.phase])}
             </p>
           </div>
@@ -60,7 +60,7 @@ function CircleCard({ c }: { c: CircleSummary }) {
           {c.phase === Phase.OPEN ? (
             <>
               <ProgressBar value={Number(c.memberCount)} max={Number(c.memberCap)} />
-              <p className="mt-1 text-xs text-stone-500">
+              <p className="mt-1 text-xs text-stone-500 dark:text-stone-400">
                 {c.memberCount.toString()}/{c.memberCap.toString()} {t("common.members")}
               </p>
             </>
@@ -70,7 +70,7 @@ function CircleCard({ c }: { c: CircleSummary }) {
                 value={Math.min(Number(c.currentRound), Number(c.memberCap))}
                 max={Number(c.memberCap)}
               />
-              <p className="mt-1 flex justify-between text-xs text-stone-500">
+              <p className="mt-1 flex justify-between text-xs text-stone-500 dark:text-stone-400">
                 <span>
                   {t("dashboard.roundOf", {
                     current: Math.min(Number(c.currentRound) + 1, Number(c.memberCap)),
@@ -106,8 +106,8 @@ function PotCard({ p }: { p: PotSummary }) {
       <Card className="transition-shadow hover:shadow-md">
         <div className="flex items-start justify-between gap-2">
           <div>
-            <h3 className="font-bold text-stone-900">{p.name}</h3>
-            <p className="text-xs text-stone-500">
+            <h3 className="font-bold text-stone-900 dark:text-stone-100">{p.name}</h3>
+            <p className="text-xs text-stone-500 dark:text-stone-400">
               {t(p.phase === PotPhase.UNLOCKED ? "status.unlocked" : "status.locked")} ·{" "}
               {p.memberCount.toString()} {t("common.members")}
             </p>
@@ -116,7 +116,7 @@ function PotCard({ p }: { p: PotSummary }) {
         </div>
         <div className="mt-3">
           <ProgressBar value={pct} max={100} />
-          <p className="mt-1 flex justify-between text-xs text-stone-500">
+          <p className="mt-1 flex justify-between text-xs text-stone-500 dark:text-stone-400">
             <span>{t("dashboard.potProgress", { percent: pct.toFixed(0) })}</span>
             <span>
               <Countdown target={p.deadline} />
@@ -148,7 +148,7 @@ export function DashboardPage() {
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-stone-900">{t("dashboard.title")}</h1>
+        <h1 className="text-2xl font-bold text-stone-900 dark:text-stone-100">{t("dashboard.title")}</h1>
         <Link
           to="/app/create"
           className="rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700"
@@ -157,7 +157,7 @@ export function DashboardPage() {
         </Link>
       </div>
 
-      {!isConnected && <p className="text-sm text-stone-500">{t("common.notConnected")}</p>}
+      {!isConnected && <p className="text-sm text-stone-500 dark:text-stone-400">{t("common.notConnected")}</p>}
 
       {loading && (
         <div className="grid gap-4 sm:grid-cols-2">

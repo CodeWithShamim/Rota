@@ -49,9 +49,9 @@ interface PotForm {
 function Field({ label, help, children }: { label: string; help?: string; children: ReactNode }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-sm font-medium text-stone-700">{label}</span>
+      <span className="mb-1 block text-sm font-medium text-stone-700 dark:text-stone-300">{label}</span>
       {children}
-      {help && <span className="mt-1 block text-xs text-stone-500">{help}</span>}
+      {help && <span className="mt-1 block text-xs text-stone-500 dark:text-stone-400">{help}</span>}
     </label>
   );
 }
@@ -72,13 +72,13 @@ function RoundPresets({ value, onChange }: { value: number; onChange: (days: num
           type="button"
           onClick={() => onChange(p.days)}
           className={`rounded-xl border px-3 py-2 text-sm font-medium ${
-            value === p.days ? "border-brand-600 bg-brand-50 text-brand-800" : "border-stone-300 text-stone-600"
+            value === p.days ? "border-brand-600 bg-brand-50 dark:bg-brand-900/30 text-brand-800 dark:text-brand-200" : "border-stone-300 dark:border-stone-700 text-stone-600 dark:text-stone-400"
           }`}
         >
           {p.label}
         </button>
       ))}
-      <div className={`flex items-center gap-1 rounded-xl border px-2 py-1 ${isCustom ? "border-brand-600 bg-brand-50" : "border-stone-300"}`}>
+      <div className={`flex items-center gap-1 rounded-xl border px-2 py-1 ${isCustom ? "border-brand-600 bg-brand-50 dark:bg-brand-900/30" : "border-stone-300 dark:border-stone-700"}`}>
         <input
           type="number"
           min={1}
@@ -87,7 +87,7 @@ function RoundPresets({ value, onChange }: { value: number; onChange: (days: num
           value={value}
           onChange={(e) => onChange(Math.max(1, Number(e.target.value) || 1))}
         />
-        <span className="text-xs text-stone-500">{t("create.days")}</span>
+        <span className="text-xs text-stone-500 dark:text-stone-400">{t("create.days")}</span>
       </div>
     </div>
   );
@@ -106,8 +106,8 @@ function GivingSection({
 }) {
   const { t } = useTranslation();
   return (
-    <div className="rounded-xl border border-stone-200 bg-stone-50 p-3">
-      <label className="flex items-center gap-2 text-sm font-medium text-stone-800">
+    <div className="rounded-xl border border-stone-200 bg-stone-50 p-3 dark:border-stone-700 dark:bg-stone-800/50">
+      <label className="flex items-center gap-2 text-sm font-medium text-stone-800 dark:text-stone-200">
         <input
           type="checkbox"
           checked={enabled}
@@ -119,7 +119,7 @@ function GivingSection({
         <div className="mt-3 space-y-3">
           <Field label={t("create.givingRecipientLabel")}>
             <input
-              className="w-full rounded-xl border border-stone-300 px-3 py-2 font-mono text-sm"
+              className="w-full rounded-xl border border-stone-300 bg-transparent px-3 py-2 font-mono text-sm dark:border-stone-700"
               placeholder="0x…"
               value={recipient}
               onChange={(e) => onChange({ giving: true, givingRecipient: e.target.value, givingPct: pct })}
@@ -148,12 +148,12 @@ function StepHeader({ step }: { step: number }) {
   const { t } = useTranslation();
   const labels = [t("create.stepBasics"), t("create.stepRules"), t("create.stepReview")];
   return (
-    <ol className="mb-6 flex gap-2">
+    <ol className="mb-6 flex flex-wrap gap-2">
       {labels.map((label, i) => (
         <li
           key={label}
           className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${
-            i === step ? "bg-brand-600 text-white" : i < step ? "bg-brand-100 text-brand-800" : "bg-stone-100 text-stone-500"
+            i === step ? "bg-brand-600 text-white" : i < step ? "bg-brand-100 dark:bg-brand-900/50 text-brand-800 dark:text-brand-200" : "bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400"
           }`}
         >
           {i + 1}. {label}
@@ -287,10 +287,10 @@ export function CreatePage() {
     const url = `${window.location.origin}/app/${deployed.kind === "circle" ? "circle" : "pot"}/${deployed.address}`;
     return (
       <Card className="mx-auto max-w-xl">
-        <h1 className="text-xl font-bold text-stone-900">
+        <h1 className="text-xl font-bold text-stone-900 dark:text-stone-100">
           🎉 {t(deployed.kind === "circle" ? "create.deployedTitle" : "create.deployedPotTitle")}
         </h1>
-        <p className="mb-4 mt-1 text-sm font-semibold text-brand-700">{t("create.invite")}</p>
+        <p className="mb-4 mt-1 text-sm font-semibold text-brand-700 dark:text-brand-400">{t("create.invite")}</p>
         <ShareInvite name={deployed.name} url={url} />
         <div className="mt-5">
           <Link to={`/app/${deployed.kind === "circle" ? "circle" : "pot"}/${deployed.address}`}>
@@ -309,14 +309,14 @@ export function CreatePage() {
     ];
     return (
       <div className="mx-auto max-w-2xl">
-        <h1 className="mb-6 text-2xl font-bold text-stone-900">{t("create.pickProduct")}</h1>
+        <h1 className="mb-6 text-2xl font-bold text-stone-900 dark:text-stone-100">{t("create.pickProduct")}</h1>
         <div className="grid gap-4 sm:grid-cols-3">
           {options.map((o) => (
             <button key={o.key} onClick={() => setProduct(o.key)} className="text-left">
               <Card className="h-full transition-shadow hover:border-brand-400 hover:shadow-md">
                 <div className="text-3xl">{o.icon}</div>
-                <h3 className="mt-2 font-bold text-stone-900">{o.name}</h3>
-                <p className="mt-1 text-xs text-stone-600">{o.desc}</p>
+                <h3 className="mt-2 font-bold text-stone-900 dark:text-stone-100">{o.name}</h3>
+                <p className="mt-1 text-xs text-stone-600 dark:text-stone-400">{o.desc}</p>
               </Card>
             </button>
           ))}
@@ -335,7 +335,7 @@ export function CreatePage() {
         <div className="space-y-4">
           <Field label={t("create.nameLabel")}>
             <input
-              className="w-full rounded-xl border border-stone-300 px-3 py-2.5"
+              className="w-full rounded-xl border border-stone-300 bg-transparent px-3 py-2.5 dark:border-stone-700"
               placeholder={t("create.namePlaceholderCircle")}
               value={circle.name}
               onChange={(e) => setCircle({ ...circle, name: e.target.value })}
@@ -363,7 +363,7 @@ export function CreatePage() {
         <div className="space-y-4">
           <Field label={t("create.nameLabel")}>
             <input
-              className="w-full rounded-xl border border-stone-300 px-3 py-2.5"
+              className="w-full rounded-xl border border-stone-300 bg-transparent px-3 py-2.5 dark:border-stone-700"
               placeholder={t("create.namePlaceholderPot")}
               value={pot.name}
               onChange={(e) => setPot({ ...pot, name: e.target.value })}
@@ -394,18 +394,18 @@ export function CreatePage() {
                 <button
                   type="button"
                   onClick={() => setCircle({ ...circle, randomOrder: false })}
-                  className={`flex-1 rounded-xl border px-3 py-2 text-sm ${!circle.randomOrder ? "border-brand-600 bg-brand-50" : "border-stone-300"}`}
+                  className={`flex-1 rounded-xl border px-3 py-2 text-sm ${!circle.randomOrder ? "border-brand-600 bg-brand-50 dark:bg-brand-900/30" : "border-stone-300 dark:border-stone-700"}`}
                 >
                   {t("mode.fixed")}
-                  <span className="block text-xs text-stone-500">{t("create.modeFixedHelp")}</span>
+                  <span className="block text-xs text-stone-500 dark:text-stone-400">{t("create.modeFixedHelp")}</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setCircle({ ...circle, randomOrder: true })}
-                  className={`flex-1 rounded-xl border px-3 py-2 text-sm ${circle.randomOrder ? "border-brand-600 bg-brand-50" : "border-stone-300"}`}
+                  className={`flex-1 rounded-xl border px-3 py-2 text-sm ${circle.randomOrder ? "border-brand-600 bg-brand-50 dark:bg-brand-900/30" : "border-stone-300 dark:border-stone-700"}`}
                 >
                   {t("mode.random")}
-                  <span className="block text-xs text-stone-500">{t("create.modeRandomHelp")}</span>
+                  <span className="block text-xs text-stone-500 dark:text-stone-400">{t("create.modeRandomHelp")}</span>
                 </button>
               </div>
             </Field>
@@ -456,14 +456,14 @@ export function CreatePage() {
               onChange={(e) => setCircle({ ...circle, openDeadlineDays: Number(e.target.value) })}
             />
           </Field>
-          <label className="flex items-center gap-2 text-sm font-medium text-stone-800">
+          <label className="flex items-center gap-2 text-sm font-medium text-stone-800 dark:text-stone-200">
             <input
               type="checkbox"
               checked={circle.inviteOnly}
               onChange={(e) => setCircle({ ...circle, inviteOnly: e.target.checked })}
             />
             {t("create.inviteOnlyLabel")}
-            <span className="text-xs font-normal text-stone-500">{t("create.inviteOnlyHelp")}</span>
+            <span className="text-xs font-normal text-stone-500 dark:text-stone-400">{t("create.inviteOnlyHelp")}</span>
           </label>
           <GivingSection
             enabled={circle.giving}
@@ -499,14 +499,14 @@ export function CreatePage() {
               onChange={(e) => setPot({ ...pot, haircutPct: Number(e.target.value) })}
             />
           </Field>
-          <label className="flex items-center gap-2 text-sm font-medium text-stone-800">
+          <label className="flex items-center gap-2 text-sm font-medium text-stone-800 dark:text-stone-200">
             <input
               type="checkbox"
               checked={pot.inviteOnly}
               onChange={(e) => setPot({ ...pot, inviteOnly: e.target.checked })}
             />
             {t("create.inviteOnlyLabel")}
-            <span className="text-xs font-normal text-stone-500">{t("create.inviteOnlyHelp")}</span>
+            <span className="text-xs font-normal text-stone-500 dark:text-stone-400">{t("create.inviteOnlyHelp")}</span>
           </label>
           <GivingSection
             enabled={pot.giving}
@@ -520,8 +520,8 @@ export function CreatePage() {
       {/* ---------------- review ---------------- */}
       {step === 2 && (
         <div className="space-y-3">
-          <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800">{t("create.reviewNote")}</p>
-          <dl className="divide-y divide-stone-100 text-sm">
+          <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-900/30 dark:text-amber-200">{t("create.reviewNote")}</p>
+          <dl className="divide-y divide-stone-100 text-sm dark:divide-stone-800">
             {(!isPot
               ? [
                   [t("create.nameLabel"), circle.name],
@@ -553,8 +553,8 @@ export function CreatePage() {
                 ]
             ).map(([k, v], i) => (
               <div key={i} className="flex items-center justify-between py-2">
-                <dt className="text-stone-500">{k}</dt>
-                <dd className="font-medium text-stone-900">{v}</dd>
+                <dt className="text-stone-500 dark:text-stone-400">{k}</dt>
+                <dd className="font-medium text-stone-900 dark:text-stone-100">{v}</dd>
               </div>
             ))}
           </dl>
@@ -574,7 +574,7 @@ export function CreatePage() {
             {t("common.next")} →
           </Button>
         ) : !isConnected ? (
-          <p className="text-sm text-stone-500">{t("common.notConnected")}</p>
+          <p className="text-sm text-stone-500 dark:text-stone-400">{t("common.notConnected")}</p>
         ) : isPot ? (
           <Button busy={creating} onClick={() => void createPot()}>
             {t(creating ? "create.creating" : "create.createPot")}

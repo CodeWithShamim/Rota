@@ -32,7 +32,7 @@ export function ApproveThen({
 
   if (balance !== undefined && balance < amount) {
     return (
-      <div className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800">
+      <div className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-900/30 dark:text-amber-200">
         {t("circle.lowBalance")}{" "}
         {faucet ? (
           <button className="font-semibold underline" onClick={() => void faucet()}>
@@ -50,7 +50,7 @@ export function ApproveThen({
   if ((allowance ?? 0n) < amount) {
     return (
       <div className="space-y-2">
-        <p className="text-xs text-stone-500">
+        <p className="text-xs text-stone-500 dark:text-stone-400">
           {t("circle.approveNote", { amount: formatUsdc(amount, i18n.language) })}
         </p>
         <Button
@@ -66,7 +66,7 @@ export function ApproveThen({
         >
           {t("common.approve")} {approveMax ? "∞" : `${formatUsdc(amount, i18n.language)} USDC`}
         </Button>
-        <label className="flex items-center gap-2 text-xs text-stone-500">
+        <label className="flex items-center gap-2 text-xs text-stone-500 dark:text-stone-400">
           <input type="checkbox" checked={approveMax} onChange={(e) => setApproveMax(e.target.checked)} />
           {t("common.approveMax")}
         </label>

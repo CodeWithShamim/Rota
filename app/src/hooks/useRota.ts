@@ -3,7 +3,7 @@
  * invalidation refreshes everything after a write) and are re-fetched live when
  * contract events fire (see useLiveInvalidation) plus a slow polling fallback.
  */
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import type { Address, PublicClient } from "viem";
 import { useAccount, usePublicClient } from "wagmi";
@@ -59,7 +59,9 @@ async function fetchCircleSummary(
       PublicClient["readContract"]
     >[0]);
 
-  const [name, phase, mode, contributionAmount, memberCap, roundDuration, startTime, currentRound, memberCount, bidWindowBps, organizer] =
+  // Wave 1: everything that doesn't depend on the current round. All reads in
+  // the same tick coalesce into a single multicall3 request (wagmi default).
+  const [name, phase, mode, contributionAmount, memberCap, roundDuration, startTime, currentRound, memberCount, bidWindowBps, organizer, isMember, hasWon, inDefault, dividendBalance, collateralBalance] =
     (await Promise.all([
       read("name"),
       read("phase"),
@@ -72,20 +74,20 @@ async function fetchCircleSummary(
       read("memberCount"),
       read("bidWindowBps"),
       read("organizer"),
-    ])) as [string, number, number, bigint, bigint, bigint, bigint, bigint, bigint, bigint, Address];
-
-  const active = phase === Phase.ACTIVE;
-  const round = active ? currentRound : 0n;
-  const [roundContributionCount, isMember, hasContributedNow, hasWon, inDefault, dividendBalance, collateralBalance] =
-    (await Promise.all([
-      read("roundContributionCount", [round]),
       user ? read("isMember", [user]) : false,
-      user ? read("hasContributed", [round, user]) : false,
       user ? read("hasWon", [user]) : false,
       user ? read("inDefault", [user]) : false,
       user ? read("dividendBalance", [user]) : 0n,
       user ? read("collateralBalance", [user]) : 0n,
-    ])) as [bigint, boolean, boolean, boolean, boolean, bigint, bigint];
+    ])) as [string, number, number, bigint, bigint, bigint, bigint, bigint, bigint, bigint, Address, boolean, boolean, boolean, bigint, bigint];
+
+  // Wave 2: only the round-dependent reads.
+  const active = phase === Phase.ACTIVE;
+  const round = active ? currentRound : 0n;
+  const [roundContributionCount, hasContributedNow] = (await Promise.all([
+    read("roundContributionCount", [round]),
+    user ? read("hasContributed", [round, user]) : false,
+  ])) as [bigint, boolean];
 
   const roundStart = startTime + round * roundDuration;
   return {
@@ -193,6 +195,8 @@ export function useCirclesOverview() {
     queryKey: ["circlesOverview", user ?? "anon"],
     enabled: !!pc && deployments.factory !== ZERO,
     refetchInterval: POLL_MS,
+    staleTime: 5_000,
+    placeholderData: keepPreviousData,
     queryFn: async () => {
       const addresses = (await pc!.readContract({
         address: deployments.factory,
@@ -211,6 +215,8 @@ export function usePotsOverview() {
     queryKey: ["potsOverview", user ?? "anon"],
     enabled: !!pc && deployments.factory !== ZERO,
     refetchInterval: POLL_MS,
+    staleTime: 5_000,
+    placeholderData: keepPreviousData,
     queryFn: async () => {
       const addresses = (await pc!.readContract({
         address: deployments.factory,
@@ -233,41 +239,63 @@ export interface ActivityItem {
 }
 
 // Arc's RPC rejects eth_getLogs spans over 10,000 blocks (HTTP 413), so scan
-// from the deployment block upward in chunks.
+// from the deployment block upward in chunks. Scanned logs are cached per
+// address for the session; refetches only scan blocks newer than the last scan.
 const LOG_CHUNK = 10_000n;
 const LOG_START_BLOCK = BigInt(deployments.deployBlock ?? 0);
+const activityCache = new Map<string, { scannedTo: bigint; items: ActivityItem[]; pending?: Promise<void> }>();
 
 async function fetchContractActivity(
   pc: PublicClient,
   address: Address,
   abi: typeof rotaCircleAbi | typeof goalPotAbi | typeof reputationRegistryAbi
 ): Promise<ActivityItem[]> {
-  const latest = await pc.getBlockNumber();
-  const ranges: { fromBlock: bigint; toBlock: bigint }[] = [];
-  for (let from = LOG_START_BLOCK; from <= latest; from += LOG_CHUNK) {
-    const to = from + LOG_CHUNK - 1n;
-    ranges.push({ fromBlock: from, toBlock: to < latest ? to : latest });
-  }
-  const chunks = await Promise.all(
-    ranges.map(
-      (r) =>
-        pc.getContractEvents({ address, abi, ...r } as unknown as Parameters<
-          PublicClient["getContractEvents"]
-        >[0]) as Promise<import("viem").Log[]>
-    )
-  );
-  return chunks
-    .flat()
-    .map((l) => ({
-      eventName: (l as unknown as { eventName?: string }).eventName ?? "",
-      args: ((l as unknown as { args?: Record<string, unknown> }).args ?? {}) as Record<string, unknown>,
-      blockNumber: l.blockNumber ?? 0n,
-      logIndex: l.logIndex ?? 0,
-      txHash: l.transactionHash ?? "",
-    }))
-    .sort((a, b) =>
-      a.blockNumber === b.blockNumber ? a.logIndex - b.logIndex : Number(a.blockNumber - b.blockNumber)
+  const key = address.toLowerCase();
+  const entry = activityCache.get(key) ?? { scannedTo: LOG_START_BLOCK - 1n, items: [] };
+  activityCache.set(key, entry);
+
+  const scan = async () => {
+    const latest = await pc.getBlockNumber();
+    if (latest <= entry.scannedTo) return;
+    const ranges: { fromBlock: bigint; toBlock: bigint }[] = [];
+    for (let from = entry.scannedTo + 1n; from <= latest; from += LOG_CHUNK) {
+      const to = from + LOG_CHUNK - 1n;
+      ranges.push({ fromBlock: from, toBlock: to < latest ? to : latest });
+    }
+    const chunks = await Promise.all(
+      ranges.map(
+        (r) =>
+          pc.getContractEvents({ address, abi, ...r } as unknown as Parameters<
+            PublicClient["getContractEvents"]
+          >[0]) as Promise<import("viem").Log[]>
+      )
     );
+    const fresh = chunks
+      .flat()
+      .map((l) => ({
+        eventName: (l as unknown as { eventName?: string }).eventName ?? "",
+        args: ((l as unknown as { args?: Record<string, unknown> }).args ?? {}) as Record<string, unknown>,
+        blockNumber: l.blockNumber ?? 0n,
+        logIndex: l.logIndex ?? 0,
+        txHash: l.transactionHash ?? "",
+      }))
+      .sort((a, b) =>
+        a.blockNumber === b.blockNumber ? a.logIndex - b.logIndex : Number(a.blockNumber - b.blockNumber)
+      );
+    // fresh logs are strictly newer than cached ones, so appending keeps order
+    entry.items = [...entry.items, ...fresh];
+    entry.scannedTo = latest;
+  };
+
+  // chain onto any in-flight scan for this address so ranges aren't double-scanned
+  const chained = (entry.pending ?? Promise.resolve()).then(scan, scan);
+  entry.pending = chained;
+  try {
+    await chained;
+  } finally {
+    if (entry.pending === chained) entry.pending = undefined;
+  }
+  return entry.items;
 }
 
 export interface CircleDetail extends CircleSummary {
@@ -299,33 +327,40 @@ export function useCircleDetail(address: Address | undefined) {
     queryKey: ["circleDetail", address, user ?? "anon"],
     enabled: !!pc && !!address,
     refetchInterval: POLL_MS,
+    staleTime: 5_000,
+    placeholderData: keepPreviousData,
     queryFn: async (): Promise<CircleDetail> => {
-      const summary = await fetchCircleSummary(pc!, address!, user);
       const read = <F extends string>(functionName: F, args?: readonly unknown[]) =>
         pc!.readContract({ address: address!, abi: rotaCircleAbi, functionName, args } as unknown as Parameters<
           PublicClient["readContract"]
         >[0]);
 
-      const round = summary.phase === Phase.ACTIVE ? summary.currentRound : 0n;
-      const [collateralBps, givingBps, givingRecipient, maxDiscountBps, openDeadline, inviteOnly, penaltyCarry, members, payoutOrder, bestBidRaw, autoPayOptIn, allowlisted, cureCost, previewRecipient] =
-        (await Promise.all([
-          read("collateralBps"),
-          read("givingBps"),
-          read("givingRecipient"),
-          read("maxDiscountBps"),
-          read("openDeadline"),
-          read("inviteOnly"),
-          read("penaltyCarry"),
-          read("getMembers"),
-          read("getPayoutOrder"),
-          read("bestBid", [round]),
-          user ? read("autoPayOptIn", [user]) : false,
-          user ? read("allowlist", [user]) : false,
-          user ? read("cureCost", [user]) : 0n,
-          read("previewRecipient"),
-        ])) as [bigint, bigint, Address, bigint, bigint, boolean, bigint, readonly Address[], readonly Address[], readonly [Address, number, boolean], boolean, boolean, bigint, Address];
+      // Fire everything round-independent up front: the static reads join the
+      // summary's wave-1 multicall, and the log scan overlaps both.
+      const activityPromise = fetchContractActivity(pc!, address!, rotaCircleAbi);
+      const staticsPromise = Promise.all([
+        read("collateralBps"),
+        read("givingBps"),
+        read("givingRecipient"),
+        read("maxDiscountBps"),
+        read("openDeadline"),
+        read("inviteOnly"),
+        read("penaltyCarry"),
+        read("getMembers"),
+        read("getPayoutOrder"),
+        user ? read("autoPayOptIn", [user]) : false,
+        user ? read("allowlist", [user]) : false,
+        user ? read("cureCost", [user]) : 0n,
+        read("previewRecipient"),
+      ]) as Promise<[bigint, bigint, Address, bigint, bigint, boolean, bigint, readonly Address[], readonly Address[], boolean, boolean, bigint, Address]>;
 
-      const activity = await fetchContractActivity(pc!, address!, rotaCircleAbi);
+      const summary = await fetchCircleSummary(pc!, address!, user);
+      const round = summary.phase === Phase.ACTIVE ? summary.currentRound : 0n;
+      const bestBidRaw = (await read("bestBid", [round])) as readonly [Address, number, boolean];
+      const [collateralBps, givingBps, givingRecipient, maxDiscountBps, openDeadline, inviteOnly, penaltyCarry, members, payoutOrder, autoPayOptIn, allowlisted, cureCost, previewRecipient] =
+        await staticsPromise;
+
+      const activity = await activityPromise;
 
       const contributionMatrix: Record<string, Record<string, boolean>> = {};
       for (const item of activity) {
@@ -374,13 +409,19 @@ export function usePotDetail(address: Address | undefined) {
     queryKey: ["potDetail", address, user ?? "anon"],
     enabled: !!pc && !!address,
     refetchInterval: POLL_MS,
+    staleTime: 5_000,
+    placeholderData: keepPreviousData,
     queryFn: async (): Promise<PotDetail> => {
-      const summary = await fetchPotSummary(pc!, address!, user);
-      const members = (await pc!.readContract({
+      // members + summary reads coalesce into one multicall; log scan overlaps
+      const activityPromise = fetchContractActivity(pc!, address!, goalPotAbi);
+      const membersPromise = pc!.readContract({
         address: address!,
         abi: goalPotAbi,
         functionName: "getMembers",
-      })) as readonly Address[];
+      }) as Promise<readonly Address[]>;
+      const summaryPromise = fetchPotSummary(pc!, address!, user);
+
+      const members = await membersPromise;
       const balances: Record<string, bigint> = {};
       await Promise.all(
         members.map(async (m) => {
@@ -392,7 +433,7 @@ export function usePotDetail(address: Address | undefined) {
           })) as bigint;
         })
       );
-      const activity = await fetchContractActivity(pc!, address!, goalPotAbi);
+      const [summary, activity] = await Promise.all([summaryPromise, activityPromise]);
       return { ...summary, members, balances, activity };
     },
   });
@@ -416,17 +457,21 @@ export function useReputation(subject: Address | undefined) {
     queryKey: ["reputation", subject],
     enabled: !!pc && !!subject && deployments.reputationRegistry !== ZERO,
     refetchInterval: POLL_MS * 2,
+    staleTime: 5_000,
+    placeholderData: keepPreviousData,
     queryFn: async (): Promise<ReputationData> => {
-      const [stats, score] = (await pc!.readContract({
+      const scorePromise = pc!.readContract({
         address: deployments.reputationRegistry,
         abi: reputationRegistryAbi,
         functionName: "getScore",
         args: [subject!],
-      })) as [
-        { contributions: bigint; defaults: bigint; completions: bigint; cures: bigint; earlyExits: bigint },
-        bigint,
-      ];
-      const allEvents = await fetchContractActivity(pc!, deployments.reputationRegistry, reputationRegistryAbi);
+      }) as Promise<
+        [{ contributions: bigint; defaults: bigint; completions: bigint; cures: bigint; earlyExits: bigint }, bigint]
+      >;
+      const [[stats, score], allEvents] = await Promise.all([
+        scorePromise,
+        fetchContractActivity(pc!, deployments.reputationRegistry, reputationRegistryAbi),
+      ]);
       const history = allEvents
         .filter((l) => String(l.args.user ?? "").toLowerCase() === subject!.toLowerCase())
         .reverse();

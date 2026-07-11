@@ -5,7 +5,9 @@ import { formatCountdown } from "../lib/format";
 
 export function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
-    <div className={`rounded-2xl border border-stone-200 bg-white p-5 shadow-sm ${className}`}>
+    <div
+      className={`rounded-2xl border border-stone-200 bg-white p-5 shadow-sm dark:border-stone-800 dark:bg-stone-900 ${className}`}
+    >
       {children}
     </div>
   );
@@ -13,11 +15,11 @@ export function Card({ children, className = "" }: { children: ReactNode; classN
 
 type BadgeTone = "brand" | "amber" | "red" | "stone" | "blue";
 const badgeTones: Record<BadgeTone, string> = {
-  brand: "bg-brand-100 text-brand-800",
-  amber: "bg-amber-100 text-amber-800",
-  red: "bg-red-100 text-red-700",
-  stone: "bg-stone-100 text-stone-600",
-  blue: "bg-sky-100 text-sky-800",
+  brand: "bg-brand-100 text-brand-800 dark:bg-brand-900/50 dark:text-brand-200",
+  amber: "bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-200",
+  red: "bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300",
+  stone: "bg-stone-100 text-stone-600 dark:bg-stone-800 dark:text-stone-300",
+  blue: "bg-sky-100 text-sky-800 dark:bg-sky-900/50 dark:text-sky-200",
 };
 
 export function Badge({ tone = "stone", children }: { tone?: BadgeTone; children: ReactNode }) {
@@ -37,11 +39,11 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 
 export function Button({ variant = "primary", busy, className = "", children, disabled, ...rest }: ButtonProps) {
   const styles = {
-    primary: "bg-brand-600 text-white hover:bg-brand-700 disabled:bg-stone-300",
+    primary: "bg-brand-600 text-white hover:bg-brand-700 disabled:bg-stone-300 dark:disabled:bg-stone-700 dark:disabled:text-stone-400",
     secondary:
-      "border border-stone-300 bg-white text-stone-800 hover:bg-stone-50 disabled:text-stone-400",
-    danger: "bg-red-600 text-white hover:bg-red-700 disabled:bg-stone-300",
-    ghost: "text-brand-700 hover:bg-brand-50 disabled:text-stone-400",
+      "border border-stone-300 bg-white text-stone-800 hover:bg-stone-50 disabled:text-stone-400 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-200 dark:hover:bg-stone-800 dark:disabled:text-stone-600",
+    danger: "bg-red-600 text-white hover:bg-red-700 disabled:bg-stone-300 dark:disabled:bg-stone-700 dark:disabled:text-stone-400",
+    ghost: "text-brand-700 hover:bg-brand-50 disabled:text-stone-400 dark:text-brand-400 dark:hover:bg-brand-900/30 dark:disabled:text-stone-600",
   }[variant];
   return (
     <button
@@ -58,15 +60,15 @@ export function Button({ variant = "primary", busy, className = "", children, di
 }
 
 export function Skeleton({ className = "" }: { className?: string }) {
-  return <div className={`animate-pulse rounded-lg bg-stone-200 ${className}`} />;
+  return <div className={`animate-pulse rounded-lg bg-stone-200 dark:bg-stone-800 ${className}`} />;
 }
 
 export function EmptyState({ title, hint, action }: { title: string; hint?: string; action?: ReactNode }) {
   return (
-    <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-stone-300 bg-stone-50 px-6 py-12 text-center">
+    <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-stone-300 bg-stone-50 px-6 py-12 text-center dark:border-stone-700 dark:bg-stone-900">
       <div className="text-4xl">🪙</div>
-      <p className="font-medium text-stone-700">{title}</p>
-      {hint && <p className="max-w-sm text-sm text-stone-500">{hint}</p>}
+      <p className="font-medium text-stone-700 dark:text-stone-300">{title}</p>
+      {hint && <p className="max-w-sm text-sm text-stone-500 dark:text-stone-400">{hint}</p>}
       {action}
     </div>
   );
@@ -75,7 +77,7 @@ export function EmptyState({ title, hint, action }: { title: string; hint?: stri
 export function ProgressBar({ value, max }: { value: number; max: number }) {
   const pct = max > 0 ? Math.min(100, (value / max) * 100) : 0;
   return (
-    <div className="h-2 w-full overflow-hidden rounded-full bg-stone-200">
+    <div className="h-2 w-full overflow-hidden rounded-full bg-stone-200 dark:bg-stone-700">
       <div className="h-full rounded-full bg-brand-500 transition-all" style={{ width: `${pct}%` }} />
     </div>
   );
@@ -88,7 +90,7 @@ export function ProgressRing({ percent, label, sub }: { percent: number; label: 
   return (
     <div className="relative h-36 w-36">
       <svg viewBox="0 0 120 120" className="h-full w-full -rotate-90">
-        <circle cx="60" cy="60" r={r} fill="none" strokeWidth="10" className="stroke-stone-200" />
+        <circle cx="60" cy="60" r={r} fill="none" strokeWidth="10" className="stroke-stone-200 dark:stroke-stone-700" />
         <circle
           cx="60"
           cy="60"
@@ -102,8 +104,8 @@ export function ProgressRing({ percent, label, sub }: { percent: number; label: 
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-2xl font-bold text-stone-900">{label}</span>
-        {sub && <span className="text-xs text-stone-500">{sub}</span>}
+        <span className="text-2xl font-bold text-stone-900 dark:text-stone-100">{label}</span>
+        {sub && <span className="text-xs text-stone-500 dark:text-stone-400">{sub}</span>}
       </div>
     </div>
   );
@@ -121,5 +123,5 @@ export function Countdown({ target }: { target: bigint | number }) {
 }
 
 export function SectionTitle({ children }: { children: ReactNode }) {
-  return <h2 className="mb-3 text-lg font-semibold text-stone-900">{children}</h2>;
+  return <h2 className="mb-3 text-lg font-semibold text-stone-900 dark:text-stone-100">{children}</h2>;
 }

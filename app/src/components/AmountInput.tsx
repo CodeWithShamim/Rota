@@ -51,10 +51,10 @@ export function AmountInput({
 
   return (
     <div>
-      <div className="flex rounded-xl border border-stone-300 bg-white focus-within:ring-2 focus-within:ring-brand-500">
+      <div className="flex rounded-xl border border-stone-300 bg-white focus-within:ring-2 focus-within:ring-brand-500 dark:border-stone-700 dark:bg-stone-900">
         <input
           inputMode="decimal"
-          className="w-full rounded-xl px-3 py-2.5 text-lg font-medium outline-none"
+          className="w-full rounded-xl bg-transparent px-3 py-2.5 text-lg font-medium outline-none"
           value={text}
           placeholder={placeholder ?? "0.00"}
           onChange={(e) => handle(e.target.value)}
@@ -67,7 +67,9 @@ export function AmountInput({
                 type="button"
                 onClick={() => switchUnit(u)}
                 className={`rounded-lg px-2 py-1 text-xs font-semibold ${
-                  unit === u ? "bg-brand-600 text-white" : "text-stone-500 hover:bg-stone-100"
+                  unit === u
+                    ? "bg-brand-600 text-white"
+                    : "text-stone-500 hover:bg-stone-100 dark:text-stone-400 dark:hover:bg-stone-800"
                 }`}
               >
                 {u === "USDC" ? "USDC" : code}
@@ -75,16 +77,16 @@ export function AmountInput({
             ))}
           </div>
         ) : (
-          <span className="flex items-center pr-3 text-sm font-semibold text-stone-500">USDC</span>
+          <span className="flex items-center pr-3 text-sm font-semibold text-stone-500 dark:text-stone-400">USDC</span>
         )}
       </div>
       {unit === "LOCAL" && value !== undefined && (
-        <p className="mt-1 text-sm font-medium text-brand-700">
+        <p className="mt-1 text-sm font-medium text-brand-700 dark:text-brand-400">
           {t("fx.youWillPay", { amount: formatUsdc(value, i18n.language) })}
         </p>
       )}
       {localAvailable && (
-        <p className="mt-1 text-xs text-stone-400">{t("fx.disclaimer")}</p>
+        <p className="mt-1 text-xs text-stone-400 dark:text-stone-500">{t("fx.disclaimer")}</p>
       )}
     </div>
   );
