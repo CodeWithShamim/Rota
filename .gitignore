@@ -55,3 +55,8 @@ Thumbs.db
 .eslintcache
 .cache/
 .turbo/
+
+# Arc testnet seeder state (throwaway persona keys + run summary)
+scripts/.seed-wallets.arc.json
+scripts/.seed-arc-summary.json
+scripts/.seed-arc.lock
