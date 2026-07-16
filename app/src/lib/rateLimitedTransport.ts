@@ -15,7 +15,7 @@
  * Contract reads still collapse via multicall3 (one eth_call = one token), so a
  * typical screen costs only a handful of tokens.
  */
-import { RpcRequestError, createTransport, type Transport } from "viem";
+import { RpcRequestError, createTransport, type EIP1193RequestFn, type Transport } from "viem";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -146,7 +146,13 @@ export function rateLimitedHttp(url: string, options: Options = {}): Transport {
       } else if (isRateLimit(r.error)) {
         throttled.push(p);
       } else if (r.error) {
-        p.reject(new RpcRequestError({ body: body[i], error: r.error, url }));
+        p.reject(
+          new RpcRequestError({
+            body: body[i],
+            error: { code: r.error.code ?? -32603, message: r.error.message ?? "unknown error", data: r.error.data },
+            url,
+          })
+        );
       } else {
         p.resolve(r.result);
       }
@@ -180,10 +186,10 @@ export function rateLimitedHttp(url: string, options: Options = {}): Transport {
       name: "Rate-limited HTTP",
       type: "http",
       retryCount: 0, // retries handled per-call inside send()
-      request: (args) =>
-        new Promise((resolve, reject) => {
-          queue.push({ request: args as Pending["request"], resolve, reject, attempts: 0 });
+      request: ((args: Pending["request"]) =>
+        new Promise<unknown>((resolve, reject) => {
+          queue.push({ request: args, resolve, reject, attempts: 0 });
           void pump();
-        }),
+        })) as EIP1193RequestFn,
     });
 }
