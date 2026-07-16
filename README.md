@@ -40,7 +40,7 @@ rota/
 │       └── i18n/         en + bn complete; es/hi/ur/tl scaffolds
 ├── genlayer/             news_curator.py — GenLayer Intelligent Contract (AI news desk)
 ├── scripts/              abi-sync.mjs, seed-local.mjs
-├── docs/                 ARC_NOTES.md (researched chain values), DECISIONS.md
+├── docs/                 ARC_NOTES.md (researched chain values), DECISIONS.md, ROADMAP.md
 └── SECURITY.md           honest limitations — read it
 ```
 
@@ -173,6 +173,8 @@ Only factory-deployed clones can write. Transparent score:
 with QR, history, and client-side signature verification — no backend.
 
 ## Feature matrix
+
+The phased plan behind the “Future” column lives in [docs/ROADMAP.md](docs/ROADMAP.md).
 
 | Feature | MVP | Future |
 |---|---|---|

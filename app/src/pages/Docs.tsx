@@ -10,6 +10,7 @@ import {
   HandHeartIcon,
   HelpCircleIcon,
   LightbulbIcon,
+  MapIcon,
   RefreshIcon,
   RocketIcon,
   SettingsIcon,
@@ -40,6 +41,7 @@ const SECTIONS: readonly { id: string; Icon: IconComponent; titleKey: string }[]
   { id: "fees", Icon: CoinsIcon, titleKey: "docs.feesTitle" },
   { id: "faq", Icon: HelpCircleIcon, titleKey: "docs.faqTitle" },
   { id: "safety", Icon: AlertTriangleIcon, titleKey: "docs.safetyTitle" },
+  { id: "roadmap", Icon: MapIcon, titleKey: "docs.roadmapTitle" },
 ] as const;
 
 const FAQ_COUNT = 7;
@@ -183,6 +185,20 @@ export function DocsPage() {
   const fees = ["Rota", "Gas", "Fx"].map((f) => ({
     title: t(`docs.fee${f}Title`),
     desc: t(`docs.fee${f}Desc`),
+  }));
+  const roadmapTagClasses = [
+    "bg-emerald-100 text-emerald-800 ring-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-300 dark:ring-emerald-800",
+    "bg-brand-100 text-brand-800 ring-brand-200 dark:bg-brand-900/40 dark:text-brand-300 dark:ring-brand-800",
+    "bg-stone-100 text-stone-600 ring-stone-200 dark:bg-stone-800 dark:text-stone-300 dark:ring-stone-700",
+    "bg-amber-100 text-amber-800 ring-amber-200 dark:bg-amber-900/40 dark:text-amber-300 dark:ring-amber-800",
+    "bg-stone-100 text-stone-600 ring-stone-200 dark:bg-stone-800 dark:text-stone-300 dark:ring-stone-700",
+  ];
+  const roadmapPhases = [1, 2, 3, 4, 5].map((n, i) => ({
+    title: t(`docs.roadmapPhase${n}Title`),
+    desc: t(`docs.roadmapPhase${n}Desc`),
+    tag: t(`docs.roadmapPhase${n}Tag`),
+    tagClass: roadmapTagClasses[i],
+    done: n === 1,
   }));
 
   const explorerName = activeChain.blockExplorers?.default.name;
@@ -405,6 +421,35 @@ export function DocsPage() {
                 ))}
               </ul>
             </div>
+          </DocSection>
+
+          <DocSection id="roadmap" Icon={MapIcon} title={t("docs.roadmapTitle")}>
+            <p>{t("docs.roadmapIntro")}</p>
+            <ol className="space-y-6 border-l-2 border-brand-200 pl-7 dark:border-brand-900">
+              {roadmapPhases.map((p, i) => (
+                <li key={p.title} className="relative">
+                  <span
+                    className={`absolute -left-[41px] flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold ${
+                      p.done
+                        ? "bg-brand-600 text-white"
+                        : "border-2 border-brand-300 bg-white text-brand-700 dark:border-brand-800 dark:bg-stone-900 dark:text-brand-300"
+                    }`}
+                  >
+                    {p.done ? "✓" : i + 1}
+                  </span>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="font-semibold text-stone-900 dark:text-stone-100">{p.title}</h3>
+                    <span
+                      className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ring-inset ${p.tagClass}`}
+                    >
+                      {p.tag}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-sm text-stone-600 dark:text-stone-400">{p.desc}</p>
+                </li>
+              ))}
+            </ol>
+            <p className="text-sm">{t("docs.roadmapNote")}</p>
           </DocSection>
 
           {/* closing call to action */}
