@@ -6,7 +6,7 @@ import { useAccount, usePublicClient, useSignMessage } from "wagmi";
 import { QRCode } from "../components/ShareInvite";
 import { Badge, Button, Card, EmptyState, SectionTitle, Skeleton } from "../components/ui";
 import { useToast } from "../hooks/toast";
-import { useReputation } from "../hooks/useRota";
+import { useReputation, useReputationHistory } from "../hooks/useRota";
 import { shortAddress } from "../lib/format";
 
 const VERIFIED_KEY = "rota.passportVerified";
@@ -48,6 +48,7 @@ export function PassportPage() {
   const subject =
     params.address && isAddress(params.address) ? (params.address as Address) : connected;
   const { data, isLoading } = useReputation(subject);
+  const { data: history } = useReputationHistory(subject);
   const { signMessageAsync } = useSignMessage();
   const publicClient = usePublicClient();
   const toast = useToast();
@@ -170,11 +171,13 @@ export function PassportPage() {
 
       <Card>
         <SectionTitle>{t("passport.history")}</SectionTitle>
-        {data.history.length === 0 ? (
+        {history === undefined ? (
+          <Skeleton className="h-16" />
+        ) : history.length === 0 ? (
           <p className="py-3 text-center text-sm text-stone-500 dark:text-stone-400">{t("passport.noHistory")}</p>
         ) : (
           <ul className="space-y-1">
-            {data.history.map((h) => {
+            {history.map((h) => {
               const meta = eventLabels[h.eventName];
               return (
                 <li

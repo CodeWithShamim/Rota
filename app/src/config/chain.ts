@@ -24,6 +24,25 @@ export interface Deployments {
   deployBlock?: number;
 }
 
+/**
+ * Arc RPC endpoints, ranked (probed 2026-07-16, see docs/ARC_NOTES.md):
+ * - dedicated (VITE_ARC_RPC_URL): your own keyed endpoint — no shared limits.
+ * - Blockdaemon gateway: generous rate limits (30-call batches, parallel reads
+ *   all pass) but a PRUNED node — eth_getLogs on older blocks returns
+ *   "pruned history unavailable" (code 4444).
+ * - primary gateway: full archive, but throttles to a ~4-call bucket refilling
+ *   a few calls/sec ("request limit reached" / HTTP 429).
+ * lib/wagmi.ts composes these: dedicated if set, else fast-first fallback with
+ * the metered archive behind it for deep history.
+ */
+export const ARC_DEDICATED_RPC: string | undefined = import.meta.env.VITE_ARC_RPC_URL || undefined;
+export const ARC_FAST_RPC = "https://rpc.blockdaemon.testnet.arc.network";
+export const ARC_ARCHIVE_RPC = "https://rpc.testnet.arc.network";
+
+const ARC_RPC_HTTP = ARC_DEDICATED_RPC || ARC_ARCHIVE_RPC;
+const ARC_RPC_WS =
+  import.meta.env.VITE_ARC_RPC_WS_URL || (ARC_DEDICATED_RPC ? "" : "wss://rpc.testnet.arc.network");
+
 /** Arc Testnet — values from docs/ARC_NOTES.md (docs.arc.io, fetched 2026-07-11). */
 export const arcTestnet = defineChain({
   id: 5042002,
@@ -36,8 +55,8 @@ export const arcTestnet = defineChain({
   },
   rpcUrls: {
     default: {
-      http: ["https://rpc.testnet.arc.network"],
-      webSocket: ["wss://rpc.testnet.arc.network"],
+      http: [ARC_RPC_HTTP],
+      ...(ARC_RPC_WS ? { webSocket: [ARC_RPC_WS] } : {}),
     },
   },
   blockExplorers: {

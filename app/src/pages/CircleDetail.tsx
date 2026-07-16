@@ -11,7 +11,7 @@ import { ShareInvite } from "../components/ShareInvite";
 import { Badge, Button, Card, Countdown, ProgressBar, SectionTitle, Skeleton } from "../components/ui";
 import { useTxFlow } from "../hooks/useTxFlow";
 import { useUsdcAllowance } from "../hooks/useUsdc";
-import { Mode, Phase, nowSeconds, useCircleDetail, type CircleDetail } from "../hooks/useRota";
+import { Mode, Phase, nowSeconds, useCircleActivity, useCircleDetail, type CircleDetail } from "../hooks/useRota";
 import { bpsToPercent, shortAddress } from "../lib/format";
 
 const phaseLabels = ["status.open", "status.active", "status.completed", "status.cancelled"];
@@ -288,7 +288,13 @@ function RoundTimeline({ c }: { c: CircleDetail }) {
   );
 }
 
-function MembersList({ c }: { c: CircleDetail }) {
+function MembersList({
+  c,
+  contributionMatrix,
+}: {
+  c: CircleDetail;
+  contributionMatrix: Record<string, Record<string, boolean>>;
+}) {
   const { t } = useTranslation();
   const { address: user } = useAccount();
   const round = c.currentRound.toString();
@@ -300,7 +306,7 @@ function MembersList({ c }: { c: CircleDetail }) {
       </SectionTitle>
       <ul className="space-y-1.5">
         {order.map((m, i) => {
-          const contributed = c.contributionMatrix[round]?.[m.toLowerCase()] ?? false;
+          const contributed = contributionMatrix[round]?.[m.toLowerCase()] ?? false;
           return (
             <li
               key={m}
@@ -330,6 +336,7 @@ export function CircleDetailPage() {
   const address = params.address && isAddress(params.address) ? (params.address as Address) : undefined;
   const { address: user } = useAccount();
   const { data: c, isLoading } = useCircleDetail(address);
+  const { data: activity, isLoading: activityLoading } = useCircleActivity(address);
 
   if (isLoading || !c) {
     return (
@@ -397,11 +404,11 @@ export function CircleDetailPage() {
       {(c.phase === Phase.COMPLETED || c.phase === Phase.CANCELLED) && <TerminalPanel c={c} />}
 
       {c.phase !== Phase.OPEN && <RoundTimeline c={c} />}
-      <MembersList c={c} />
+      <MembersList c={c} contributionMatrix={activity?.contributionMatrix ?? {}} />
 
       <Card>
         <SectionTitle>{t("circle.activity")}</SectionTitle>
-        <ActivityFeed items={c.activity} />
+        {activityLoading && !activity ? <Skeleton className="h-24" /> : <ActivityFeed items={activity?.activity ?? []} />}
       </Card>
       <p className="break-all text-center text-xs text-stone-400 dark:text-stone-500">
         <span className="font-mono">{c.address}</span> · {i18n.language}

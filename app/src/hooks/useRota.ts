@@ -242,8 +242,51 @@ export interface ActivityItem {
 // from the deployment block upward in chunks. Scanned logs are cached per
 // address for the session; refetches only scan blocks newer than the last scan.
 const LOG_CHUNK = 10_000n;
+// max concurrent eth_getLogs during a scan — keeps bursts under Arc's rate limit
+const LOG_SCAN_CONCURRENCY = 4;
 const LOG_START_BLOCK = BigInt(deployments.deployBlock ?? 0);
-const activityCache = new Map<string, { scannedTo: bigint; items: ActivityItem[]; pending?: Promise<void> }>();
+
+interface ActivityCacheEntry {
+  scannedTo: bigint;
+  items: ActivityItem[];
+  pending?: Promise<void>;
+}
+const activityCache = new Map<string, ActivityCacheEntry>();
+
+// A fresh scan spans the whole chain history (hundreds of 10k-block chunks) and,
+// throttled under Arc's RPC rate limit, takes many seconds. Persist results to
+// localStorage so it runs once per browser, not once per page load — reloads then
+// only scan the handful of blocks mined since last time.
+const ACTIVITY_STORE_PREFIX = `rota:activity:${deployments.chainId}:`;
+// bigints (blockNumber + event args) aren't JSON-native; tag them for round-trip.
+const bigintReplacer = (_k: string, v: unknown) =>
+  typeof v === "bigint" ? { __bigint: v.toString() } : v;
+const bigintReviver = (_k: string, v: unknown) =>
+  v && typeof v === "object" && "__bigint" in (v as object)
+    ? BigInt((v as { __bigint: string }).__bigint)
+    : v;
+
+function loadPersistedActivity(key: string): ActivityCacheEntry | undefined {
+  try {
+    const raw = localStorage.getItem(ACTIVITY_STORE_PREFIX + key);
+    if (!raw) return undefined;
+    const parsed = JSON.parse(raw, bigintReviver) as { scannedTo: bigint; items: ActivityItem[] };
+    return { scannedTo: BigInt(parsed.scannedTo), items: parsed.items };
+  } catch {
+    return undefined; // corrupt entry / storage unavailable — fall back to full scan
+  }
+}
+
+function persistActivity(key: string, entry: ActivityCacheEntry): void {
+  try {
+    localStorage.setItem(
+      ACTIVITY_STORE_PREFIX + key,
+      JSON.stringify({ scannedTo: entry.scannedTo, items: entry.items }, bigintReplacer)
+    );
+  } catch {
+    /* quota exceeded / private mode — the in-memory cache still works */
+  }
+}
 
 async function fetchContractActivity(
   pc: PublicClient,
@@ -251,7 +294,8 @@ async function fetchContractActivity(
   abi: typeof rotaCircleAbi | typeof goalPotAbi | typeof reputationRegistryAbi
 ): Promise<ActivityItem[]> {
   const key = address.toLowerCase();
-  const entry = activityCache.get(key) ?? { scannedTo: LOG_START_BLOCK - 1n, items: [] };
+  const entry: ActivityCacheEntry =
+    activityCache.get(key) ?? loadPersistedActivity(key) ?? { scannedTo: LOG_START_BLOCK - 1n, items: [] };
   activityCache.set(key, entry);
 
   const scan = async () => {
@@ -262,14 +306,21 @@ async function fetchContractActivity(
       const to = from + LOG_CHUNK - 1n;
       ranges.push({ fromBlock: from, toBlock: to < latest ? to : latest });
     }
-    const chunks = await Promise.all(
-      ranges.map(
-        (r) =>
-          pc.getContractEvents({ address, abi, ...r } as unknown as Parameters<
-            PublicClient["getContractEvents"]
-          >[0]) as Promise<import("viem").Log[]>
-      )
-    );
+    // Arc rate-limits (HTTP 429) if we fan out every 10k-block chunk at once —
+    // a fresh scan can span hundreds of thousands of blocks. Cap in-flight
+    // eth_getLogs to a small pool instead of one big Promise.all burst.
+    const chunks: import("viem").Log[][] = [];
+    for (let i = 0; i < ranges.length; i += LOG_SCAN_CONCURRENCY) {
+      const batch = await Promise.all(
+        ranges.slice(i, i + LOG_SCAN_CONCURRENCY).map(
+          (r) =>
+            pc.getContractEvents({ address, abi, ...r } as unknown as Parameters<
+              PublicClient["getContractEvents"]
+            >[0]) as Promise<import("viem").Log[]>
+        )
+      );
+      chunks.push(...batch);
+    }
     const fresh = chunks
       .flat()
       .map((l) => ({
@@ -285,6 +336,7 @@ async function fetchContractActivity(
     // fresh logs are strictly newer than cached ones, so appending keeps order
     entry.items = [...entry.items, ...fresh];
     entry.scannedTo = latest;
+    persistActivity(key, entry);
   };
 
   // chain onto any in-flight scan for this address so ranges aren't double-scanned
@@ -313,15 +365,12 @@ export interface CircleDetail extends CircleSummary {
   allowlisted: boolean;
   cureCost: bigint;
   previewRecipient: Address;
-  /** contributionMatrix[round][member] = contributed */
-  contributionMatrix: Record<string, Record<string, boolean>>;
-  activity: ActivityItem[];
 }
 
 export function useCircleDetail(address: Address | undefined) {
   const pc = usePublicClient();
   const { address: user } = useAccount();
-  useLiveInvalidation(address, ["circleDetail", "circlesOverview"]);
+  useLiveInvalidation(address, ["circleDetail", "circlesOverview", "circleActivity"]);
 
   return useQuery({
     queryKey: ["circleDetail", address, user ?? "anon"],
@@ -335,9 +384,9 @@ export function useCircleDetail(address: Address | undefined) {
           PublicClient["readContract"]
         >[0]);
 
-      // Fire everything round-independent up front: the static reads join the
-      // summary's wave-1 multicall, and the log scan overlaps both.
-      const activityPromise = fetchContractActivity(pc!, address!, rotaCircleAbi);
+      // Round-independent statics join the summary's wave-1 multicall. The event
+      // log scan is NOT awaited here — it runs in useCircleActivity so the page
+      // renders core data immediately (see progressive-loading note there).
       const staticsPromise = Promise.all([
         read("collateralBps"),
         read("givingBps"),
@@ -360,17 +409,6 @@ export function useCircleDetail(address: Address | undefined) {
       const [collateralBps, givingBps, givingRecipient, maxDiscountBps, openDeadline, inviteOnly, penaltyCarry, members, payoutOrder, autoPayOptIn, allowlisted, cureCost, previewRecipient] =
         await staticsPromise;
 
-      const activity = await activityPromise;
-
-      const contributionMatrix: Record<string, Record<string, boolean>> = {};
-      for (const item of activity) {
-        if (item.eventName === "Contributed") {
-          const r = String(item.args.round);
-          const m = String(item.args.member).toLowerCase();
-          (contributionMatrix[r] ??= {})[m] = true;
-        }
-      }
-
       return {
         ...summary,
         collateralBps,
@@ -387,9 +425,42 @@ export function useCircleDetail(address: Address | undefined) {
         allowlisted,
         cureCost,
         previewRecipient,
-        contributionMatrix,
-        activity,
       };
+    },
+  });
+}
+
+export interface CircleActivity {
+  activity: ActivityItem[];
+  /** contributionMatrix[round][member] = contributed */
+  contributionMatrix: Record<string, Record<string, boolean>>;
+}
+
+/**
+ * Historical event log for a circle, loaded separately from useCircleDetail so
+ * the multi-second chain scan (throttled under Arc's RPC limit) never blocks the
+ * page's core data. Results persist to localStorage (see fetchContractActivity),
+ * so after the first scan this is effectively instant.
+ */
+export function useCircleActivity(address: Address | undefined) {
+  const pc = usePublicClient();
+  return useQuery({
+    queryKey: ["circleActivity", address],
+    enabled: !!pc && !!address,
+    refetchInterval: POLL_MS * 2,
+    staleTime: 30_000,
+    placeholderData: keepPreviousData,
+    queryFn: async (): Promise<CircleActivity> => {
+      const activity = await fetchContractActivity(pc!, address!, rotaCircleAbi);
+      const contributionMatrix: Record<string, Record<string, boolean>> = {};
+      for (const item of activity) {
+        if (item.eventName === "Contributed") {
+          const r = String(item.args.round);
+          const m = String(item.args.member).toLowerCase();
+          (contributionMatrix[r] ??= {})[m] = true;
+        }
+      }
+      return { activity, contributionMatrix };
     },
   });
 }
@@ -397,13 +468,12 @@ export function useCircleDetail(address: Address | undefined) {
 export interface PotDetail extends PotSummary {
   members: readonly Address[];
   balances: Record<string, bigint>;
-  activity: ActivityItem[];
 }
 
 export function usePotDetail(address: Address | undefined) {
   const pc = usePublicClient();
   const { address: user } = useAccount();
-  useLiveInvalidation(address, ["potDetail", "potsOverview"], goalPotAbi);
+  useLiveInvalidation(address, ["potDetail", "potsOverview", "potActivity"], goalPotAbi);
 
   return useQuery({
     queryKey: ["potDetail", address, user ?? "anon"],
@@ -412,8 +482,8 @@ export function usePotDetail(address: Address | undefined) {
     staleTime: 5_000,
     placeholderData: keepPreviousData,
     queryFn: async (): Promise<PotDetail> => {
-      // members + summary reads coalesce into one multicall; log scan overlaps
-      const activityPromise = fetchContractActivity(pc!, address!, goalPotAbi);
+      // members + summary reads coalesce into one multicall; the event log scan
+      // is loaded separately in usePotActivity so it doesn't block this render.
       const membersPromise = pc!.readContract({
         address: address!,
         abi: goalPotAbi,
@@ -433,9 +503,22 @@ export function usePotDetail(address: Address | undefined) {
           })) as bigint;
         })
       );
-      const [summary, activity] = await Promise.all([summaryPromise, activityPromise]);
-      return { ...summary, members, balances, activity };
+      const summary = await summaryPromise;
+      return { ...summary, members, balances };
     },
+  });
+}
+
+/** Historical event log for a goal pot — see useCircleActivity for the rationale. */
+export function usePotActivity(address: Address | undefined) {
+  const pc = usePublicClient();
+  return useQuery({
+    queryKey: ["potActivity", address],
+    enabled: !!pc && !!address,
+    refetchInterval: POLL_MS * 2,
+    staleTime: 30_000,
+    placeholderData: keepPreviousData,
+    queryFn: () => fetchContractActivity(pc!, address!, goalPotAbi),
   });
 }
 
@@ -448,9 +531,14 @@ export interface ReputationData {
   cures: bigint;
   earlyExits: bigint;
   score: bigint;
-  history: ActivityItem[];
 }
 
+/**
+ * Reputation score + counters — a single getScore read. Deliberately does NOT
+ * scan the registry's event log: this hook renders in the global Header on every
+ * page, and a full-history scan there would hammer Arc's rate limit constantly.
+ * The event history lives in useReputationHistory, loaded only on the Passport.
+ */
 export function useReputation(subject: Address | undefined) {
   const pc = usePublicClient();
   return useQuery({
@@ -460,21 +548,15 @@ export function useReputation(subject: Address | undefined) {
     staleTime: 5_000,
     placeholderData: keepPreviousData,
     queryFn: async (): Promise<ReputationData> => {
-      const scorePromise = pc!.readContract({
+      const [stats, score] = (await pc!.readContract({
         address: deployments.reputationRegistry,
         abi: reputationRegistryAbi,
         functionName: "getScore",
         args: [subject!],
-      }) as Promise<
-        [{ contributions: bigint; defaults: bigint; completions: bigint; cures: bigint; earlyExits: bigint }, bigint]
-      >;
-      const [[stats, score], allEvents] = await Promise.all([
-        scorePromise,
-        fetchContractActivity(pc!, deployments.reputationRegistry, reputationRegistryAbi),
-      ]);
-      const history = allEvents
-        .filter((l) => String(l.args.user ?? "").toLowerCase() === subject!.toLowerCase())
-        .reverse();
+      })) as [
+        { contributions: bigint; defaults: bigint; completions: bigint; cures: bigint; earlyExits: bigint },
+        bigint
+      ];
       return {
         contributions: BigInt(stats.contributions),
         defaults: BigInt(stats.defaults),
@@ -482,8 +564,25 @@ export function useReputation(subject: Address | undefined) {
         cures: BigInt(stats.cures),
         earlyExits: BigInt(stats.earlyExits),
         score,
-        history,
       };
+    },
+  });
+}
+
+/** A subject's reputation event history (newest first) — scans the registry log. */
+export function useReputationHistory(subject: Address | undefined) {
+  const pc = usePublicClient();
+  return useQuery({
+    queryKey: ["reputationHistory", subject],
+    enabled: !!pc && !!subject && deployments.reputationRegistry !== ZERO,
+    refetchInterval: POLL_MS * 2,
+    staleTime: 30_000,
+    placeholderData: keepPreviousData,
+    queryFn: async (): Promise<ActivityItem[]> => {
+      const allEvents = await fetchContractActivity(pc!, deployments.reputationRegistry, reputationRegistryAbi);
+      return allEvents
+        .filter((l) => String(l.args.user ?? "").toLowerCase() === subject!.toLowerCase())
+        .reverse();
     },
   });
 }
@@ -508,7 +607,7 @@ function useLiveInvalidation(
           void queryClient.invalidateQueries({ queryKey: [prefix] });
         }
       },
-      pollingInterval: 4_000,
+      pollingInterval: POLL_MS,
     } as unknown as Parameters<PublicClient["watchContractEvent"]>[0]);
     return unwatch;
     // eslint-disable-next-line react-hooks/exhaustive-deps

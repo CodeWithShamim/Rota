@@ -11,7 +11,7 @@ import { Money, moneyText } from "../components/Money";
 import { ShareInvite } from "../components/ShareInvite";
 import { Badge, Button, Card, Countdown, ProgressRing, SectionTitle, Skeleton } from "../components/ui";
 import { useTxFlow } from "../hooks/useTxFlow";
-import { PotPhase, usePotDetail } from "../hooks/useRota";
+import { PotPhase, usePotActivity, usePotDetail } from "../hooks/useRota";
 import { bpsToPercent, formatDate, shortAddress } from "../lib/format";
 
 export function PotDetailPage() {
@@ -20,6 +20,7 @@ export function PotDetailPage() {
   const address = params.address && isAddress(params.address) ? (params.address as Address) : undefined;
   const { address: user } = useAccount();
   const { data: p, isLoading } = usePotDetail(address);
+  const { data: activity, isLoading: activityLoading } = usePotActivity(address);
   const runTx = useTxFlow();
   const [depositAmount, setDepositAmount] = useState<bigint | undefined>(undefined);
   const [confirmExit, setConfirmExit] = useState(false);
@@ -189,7 +190,7 @@ export function PotDetailPage() {
 
       <Card>
         <SectionTitle>{t("circle.activity")}</SectionTitle>
-        <ActivityFeed items={p.activity} />
+        {activityLoading && !activity ? <Skeleton className="h-24" /> : <ActivityFeed items={activity ?? []} />}
       </Card>
       <p className="break-all text-center font-mono text-xs text-stone-400 dark:text-stone-500">{p.address}</p>
     </div>

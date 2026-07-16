@@ -9,7 +9,17 @@ import "./i18n";
 import "./index.css";
 import { wagmiConfig } from "./lib/wagmi";
 
-const queryClient = new QueryClient();
+// refetchOnWindowFocus defaults to true, so every tab focus refetches *all*
+// active queries at once — a burst that trips Arc's RPC rate limiter (429).
+// Disable it; the per-query refetchInterval + live event-watch keep data fresh.
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      retry: 2,
+    },
+  },
+});
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
