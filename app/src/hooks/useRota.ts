@@ -5,10 +5,11 @@
  */
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
-import type { Address, PublicClient } from "viem";
+import type { Abi, Address, PublicClient } from "viem";
 import { useAccount, usePublicClient } from "wagmi";
 import { goalPotAbi, reputationRegistryAbi, rotaCircleAbi, rotaFactoryAbi } from "../abi";
-import { deployments } from "../config/chain";
+import { activeChain, deployments } from "../config/chain";
+import { fetchExplorerLogs } from "../lib/explorerLogs";
 
 export const Phase = { OPEN: 0, ACTIVE: 1, COMPLETED: 2, CANCELLED: 3 } as const;
 export const Mode = { FIXED: 0, RANDOM: 1, BID: 2 } as const;
@@ -301,6 +302,33 @@ async function fetchContractActivity(
   const scan = async () => {
     const latest = await pc.getBlockNumber();
     if (latest <= entry.scannedTo) return;
+
+    // Deep backfill goes through the Arcscan indexer — the whole history in one
+    // HTTP call instead of dozens of rate-limited eth_getLogs chunks (which took
+    // ~minutes on a cold cache). Leave a small tail for the RPC scan below: the
+    // indexer can lag the chain head by a few blocks, and the RPC path is the
+    // guaranteed-fresh source. Falls through silently if the explorer is down.
+    const backfillGap = latest - entry.scannedTo;
+    if (backfillGap > 2n * LOG_CHUNK) {
+      const explorerBase = activeChain.blockExplorers?.default.url;
+      const backfillTo = latest - 500n;
+      if (explorerBase) {
+        try {
+          const items = await fetchExplorerLogs(
+            explorerBase,
+            address,
+            abi as Abi,
+            entry.scannedTo + 1n,
+            backfillTo
+          );
+          entry.items = [...entry.items, ...items];
+          entry.scannedTo = backfillTo;
+        } catch {
+          /* explorer unavailable — the chunked RPC scan below covers everything */
+        }
+      }
+    }
+
     const ranges: { fromBlock: bigint; toBlock: bigint }[] = [];
     for (let from = entry.scannedTo + 1n; from <= latest; from += LOG_CHUNK) {
       const to = from + LOG_CHUNK - 1n;
