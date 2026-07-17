@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, NavLink } from "react-router-dom";
-import { useAccount, useConnect, useDisconnect, useSwitchChain } from "wagmi";
+import { usePrivy } from "@privy-io/react-auth";
+import { useAccount, useDisconnect, useSwitchChain } from "wagmi";
 import { CURRENCIES } from "../config/currencies";
 import { FAUCET_URL, activeChain, CHAIN_KEY } from "../config/chain";
 import { useDisplayCurrency } from "../hooks/useDisplayCurrency";
@@ -30,7 +31,7 @@ function ConnectControls() {
   const { t, i18n } = useTranslation();
   const { address, isConnected, chainId } = useAccount();
   const { data: balance } = useUsdcBalance();
-  const { connect, connectors, isPending } = useConnect();
+  const { ready, authenticated, login, logout } = usePrivy();
   const { disconnect } = useDisconnect();
   const { switchChain } = useSwitchChain();
   const { faucet } = useUsdcActions();
@@ -63,16 +64,17 @@ function ConnectControls() {
   }
 
   if (!isConnected) {
-    const injectedConnector = connectors[0];
+    // authenticated && !isConnected: Privy is restoring the session's wallet
+    // into wagmi (brief on reload) — show it as connecting, not connectable.
+    const syncing = ready && authenticated;
     return (
       <Button
-        busy={isPending}
-        onClick={() => injectedConnector && connect({ connector: injectedConnector })}
-        title={injectedConnector ? undefined : t("header.noWallet")}
-        disabled={!injectedConnector}
+        busy={syncing}
+        disabled={!ready || syncing}
+        onClick={() => login()}
         className="whitespace-nowrap"
       >
-        {t(isPending ? "header.connecting" : "header.connect")}
+        {t(syncing ? "header.connecting" : "header.connect")}
       </Button>
     );
   }
@@ -152,7 +154,12 @@ function ConnectControls() {
             role="menuitem"
             onClick={() => {
               setOpen(false);
+              // Drop the wagmi connection immediately, then end the Privy
+              // session if one exists. logout() 400s when the server-side
+              // session is already gone (expired/stale token) — local state is
+              // still cleared, so swallow it rather than surface a dead call.
               disconnect();
+              if (authenticated) logout().catch(() => {});
             }}
             className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/30"
           >

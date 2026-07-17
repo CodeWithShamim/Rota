@@ -1,5 +1,5 @@
-import { fallback, createConfig, http } from "wagmi";
-import { injected } from "wagmi/connectors";
+import { createConfig } from "@privy-io/wagmi";
+import { fallback, http } from "wagmi";
 import { ARC_ARCHIVE_RPC, ARC_DEDICATED_RPC, ARC_FAST_RPC, arcTestnet, localAnvil } from "../config/chain";
 import { rateLimitedHttp } from "./rateLimitedTransport";
 
@@ -22,9 +22,10 @@ const arcTransport = ARC_DEDICATED_RPC
     ]);
 
 // Both chains are registered; the app gates actions on `activeChain` (VITE_CHAIN).
+// No connectors here: @privy-io/wagmi injects Privy's connector (embedded and
+// external wallets) and keeps it in sync with the Privy session.
 export const wagmiConfig = createConfig({
   chains: [arcTestnet, localAnvil],
-  connectors: [injected()],
   transports: {
     [arcTestnet.id]: arcTransport,
     [localAnvil.id]: http(),

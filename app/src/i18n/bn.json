@@ -55,7 +55,6 @@
     "disconnect": "সংযোগ বিচ্ছিন্ন",
     "copyAddress": "ঠিকানা কপি করুন",
     "connecting": "সংযোগ হচ্ছে…",
-    "noWallet": "কোনো ওয়ালেট পাওয়া যায়নি — MetaMask বা সমতুল্য ওয়ালেট ইনস্টল করুন।",
     "wrongNetwork": "ভুল নেটওয়ার্ক",
     "switchNetwork": "{{chain}}-এ যান",
     "language": "ভাষা",

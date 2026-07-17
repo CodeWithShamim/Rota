@@ -55,7 +55,6 @@
     "disconnect": "Disconnect",
     "copyAddress": "Copy address",
     "connecting": "Connecting…",
-    "noWallet": "No injected wallet found — install MetaMask or a compatible wallet.",
     "wrongNetwork": "Wrong network",
     "switchNetwork": "Switch to {{chain}}",
     "language": "Language",
