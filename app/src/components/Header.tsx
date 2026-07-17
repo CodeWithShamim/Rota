@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, NavLink } from "react-router-dom";
-import { usePrivy } from "@privy-io/react-auth";
+import { useConnectWallet, usePrivy, useWallets } from "@privy-io/react-auth";
+import { useSetActiveWallet } from "@privy-io/wagmi";
 import { useAccount, useDisconnect, useSwitchChain } from "wagmi";
 import { CURRENCIES } from "../config/currencies";
 import { FAUCET_URL, activeChain, CHAIN_KEY } from "../config/chain";
@@ -32,13 +33,44 @@ function ConnectControls() {
   const { address, isConnected, chainId } = useAccount();
   const { data: balance } = useUsdcBalance();
   const { ready, authenticated, login, logout } = usePrivy();
+  const { wallets, ready: walletsReady } = useWallets();
+  const { setActiveWallet } = useSetActiveWallet();
+  const { connectWallet } = useConnectWallet();
   const { disconnect } = useDisconnect();
   const { switchChain } = useSwitchChain();
   const { faucet } = useUsdcActions();
   const wrongNetwork = isConnected && chainId !== activeChain.id;
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [stalled, setStalled] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const walletsRef = useRef(wallets);
+  walletsRef.current = wallets;
+
+  // Privy restores its session on reload, but the wagmi bridge can miss the
+  // reconnect (locked extension, connector-setup race), leaving the header
+  // spinning forever. While authenticated without a wagmi connection, keep
+  // re-attaching the session wallet; if it still hasn't connected after a few
+  // tries, fall back to a clickable Connect button instead of the spinner.
+  useEffect(() => {
+    if (!(ready && authenticated && !isConnected && walletsReady)) {
+      setStalled(false);
+      return;
+    }
+    let attempts = 0;
+    const tryAttach = () => {
+      const wallet = walletsRef.current[0];
+      if (wallet) void setActiveWallet(wallet);
+      attempts += 1;
+      if (attempts >= 4) {
+        setStalled(true);
+        clearInterval(id);
+      }
+    };
+    const id = setInterval(tryAttach, 1500);
+    tryAttach();
+    return () => clearInterval(id);
+  }, [ready, authenticated, isConnected, walletsReady, setActiveWallet]);
 
   useEffect(() => {
     if (!open) return;
@@ -66,12 +98,14 @@ function ConnectControls() {
   if (!isConnected) {
     // authenticated && !isConnected: Privy is restoring the session's wallet
     // into wagmi (brief on reload) — show it as connecting, not connectable.
-    const syncing = ready && authenticated;
+    // Once that stalls, offer Connect again: connectWallet() re-prompts for a
+    // wallet within the existing session (login() throws when authenticated).
+    const syncing = ready && authenticated && !stalled;
     return (
       <Button
         busy={syncing}
         disabled={!ready || syncing}
-        onClick={() => login()}
+        onClick={() => (authenticated ? connectWallet() : login())}
         className="whitespace-nowrap"
       >
         {t(syncing ? "header.connecting" : "header.connect")}
