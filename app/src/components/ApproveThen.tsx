@@ -16,10 +16,19 @@ export function ApproveThen({
   spender,
   amount,
   children,
+  requireBalance = true,
 }: {
   spender: Address;
   amount: bigint;
   children: ReactNode;
+  /**
+   * Whether holding `amount` today is a precondition. True for actions that
+   * spend immediately (join, contribute, deposit, cure). False when the
+   * allowance merely pre-authorizes future spending — an AutoPay opt-in covering
+   * every remaining round must not be blocked just because the member does not
+   * hold all of it yet.
+   */
+  requireBalance?: boolean;
 }) {
   const { t, i18n } = useTranslation();
   const { data: allowance, isLoading } = useUsdcAllowance(spender);
@@ -30,7 +39,7 @@ export function ApproveThen({
 
   if (isLoading) return null;
 
-  if (balance !== undefined && balance < amount) {
+  if (requireBalance && balance !== undefined && balance < amount) {
     return (
       <div className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-900/30 dark:text-amber-200">
         {t("circle.lowBalance")}{" "}

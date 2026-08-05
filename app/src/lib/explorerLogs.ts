@@ -30,6 +30,13 @@ export interface ExplorerLogItem {
   txHash: string;
 }
 
+/**
+ * Blockscout's classic API caps a response at this many records. A response of
+ * exactly this size is therefore presumed truncated — the caller must not treat
+ * the requested range as fully scanned (see EXPLORER_PAGE_LIMIT use in useRota).
+ */
+export const EXPLORER_PAGE_LIMIT = 1_000;
+
 export async function fetchExplorerLogs(
   explorerBaseUrl: string,
   address: string,
@@ -39,7 +46,7 @@ export async function fetchExplorerLogs(
 ): Promise<ExplorerLogItem[]> {
   const url =
     `${explorerBaseUrl}/api?module=logs&action=getLogs` +
-    `&address=${address}&fromBlock=${fromBlock}&toBlock=${toBlock}`;
+    `&address=${encodeURIComponent(address)}&fromBlock=${fromBlock}&toBlock=${toBlock}`;
   const res = await fetch(url, { headers: { accept: "application/json" } });
   if (!res.ok) throw new Error(`explorer API HTTP ${res.status}`);
   const json = (await res.json()) as { message?: string; result?: unknown };

@@ -51,6 +51,15 @@ export function shortAddress(address: string): string {
   return `${address.slice(0, 6)}…${address.slice(-4)}`;
 }
 
+/**
+ * Case-insensitive address equality. Addresses reach the UI from several
+ * sources (wallet, contract reads, event args, URL params) whose checksum
+ * casing is not guaranteed to agree, so `===` on them is a latent bug.
+ */
+export function sameAddress(a: string | undefined, b: string | undefined): boolean {
+  return !!a && !!b && a.toLowerCase() === b.toLowerCase();
+}
+
 /** Seconds → localized "in 3 days" / "৩ দিন পরে" (or "now" when past). */
 export function formatCountdown(targetSeconds: bigint | number, locale = "en"): string {
   const target = Number(targetSeconds);

@@ -12,7 +12,7 @@ import { ShareInvite } from "../components/ShareInvite";
 import { Badge, Button, Card, Countdown, EmptyState, ProgressRing, SectionTitle, Skeleton } from "../components/ui";
 import { useTxFlow } from "../hooks/useTxFlow";
 import { PotPhase, useIsRotaContract, usePotActivity, usePotDetail } from "../hooks/useRota";
-import { bpsToPercent, formatDate, shortAddress } from "../lib/format";
+import { bpsToPercent, formatDate, sameAddress, shortAddress } from "../lib/format";
 
 export function PotDetailPage() {
   const { t, i18n } = useTranslation();
@@ -28,8 +28,14 @@ export function PotDetailPage() {
 
   // Provenance gate: never render deposit/approve actions against a contract the
   // factory did not deploy (the address is attacker-controllable via the URL).
-  if (isRota === false) {
-    return <EmptyState title={t("circle.untrustedTitle")} hint={t("circle.untrustedBody")} />;
+  // Fails closed — an unresolved check (RPC error, factory unconfigured, invalid
+  // address) is not permission to render approve buttons.
+  if (!verifying && isRota !== true) {
+    return isRota === false ? (
+      <EmptyState title={t("circle.untrustedTitle")} hint={t("circle.untrustedBody")} />
+    ) : (
+      <EmptyState title={t("circle.verifyFailedTitle")} hint={t("circle.verifyFailedBody")} />
+    );
   }
 
   if (verifying || isLoading || !p) {
@@ -177,8 +183,8 @@ export function PotDetailPage() {
               >
                 <span className="w-6 text-xs text-stone-400 dark:text-stone-500">{i + 1}.</span>
                 <span className="font-mono">{shortAddress(m)}</span>
-                {m === p.organizer && <Badge tone="stone">{t("common.organizer")}</Badge>}
-                {user && m.toLowerCase() === user.toLowerCase() && <Badge tone="blue">{t("common.you")}</Badge>}
+                {sameAddress(m, p.organizer) && <Badge tone="stone">{t("common.organizer")}</Badge>}
+                {sameAddress(m, user) && <Badge tone="blue">{t("common.you")}</Badge>}
                 <span className="ml-auto">
                   <Money amount={p.balances[m.toLowerCase()] ?? 0n} />
                 </span>

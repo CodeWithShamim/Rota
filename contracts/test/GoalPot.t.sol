@@ -166,6 +166,49 @@ contract GoalPotTest is BaseTest {
         assertEq(usdc.balanceOf(address(pot)), 0, "dust beyond expected");
     }
 
+    /// The haircut pool is only payable via withdraw(), pro-rata against
+    /// unlockTotal. If everyone exits early unlockTotal is 0, so the pool must be
+    /// swept by the last member out or it is locked in the contract forever.
+    function test_EmergencyWithdraw_LastMemberOutSweepsHaircutPool() public {
+        GoalPot pot = createPot(defaultPotParams()); // 2% haircut
+        depositAs(pot, users[1], 100e6);
+        depositAs(pot, users[2], 100e6);
+
+        uint256 b1 = usdc.balanceOf(users[1]);
+        vm.prank(users[1]);
+        pot.emergencyWithdraw();
+        assertEq(usdc.balanceOf(users[1]), b1 + 98e6, "first out pays the haircut");
+        assertEq(pot.totalHaircut(), 2e6);
+
+        // users[2] is the last one out: no haircut (nobody left to compensate)
+        // and they collect the orphaned pool.
+        uint256 b2 = usdc.balanceOf(users[2]);
+        vm.prank(users[2]);
+        pot.emergencyWithdraw();
+        assertEq(usdc.balanceOf(users[2]), b2 + 100e6 + 2e6, "last out sweeps the pool");
+
+        assertEq(pot.totalDeposited(), 0);
+        assertEq(pot.totalHaircut(), 0);
+        assertEq(usdc.balanceOf(address(pot)), 0, "nothing may be stranded");
+
+        vm.warp(block.timestamp + 61 days);
+        pot.unlock();
+        assertEq(usdc.balanceOf(address(pot)), 0);
+    }
+
+    /// A sole depositor exiting is also "last out" — they must not be charged a
+    /// haircut that no one could ever claim.
+    function test_EmergencyWithdraw_SoleDepositorPaysNoHaircut() public {
+        GoalPot pot = createPot(defaultPotParams());
+        depositAs(pot, users[1], 100e6);
+
+        uint256 b1 = usdc.balanceOf(users[1]);
+        vm.prank(users[1]);
+        pot.emergencyWithdraw();
+        assertEq(usdc.balanceOf(users[1]), b1 + 100e6);
+        assertEq(usdc.balanceOf(address(pot)), 0);
+    }
+
     function test_EmergencyWithdraw_BlockedAfterUnlock() public {
         GoalPot pot = createPot(defaultPotParams());
         depositAs(pot, users[1], 1_000e6);

@@ -12,7 +12,7 @@ import { Badge, Button, Card, Countdown, EmptyState, ProgressBar, SectionTitle, 
 import { useTxFlow } from "../hooks/useTxFlow";
 import { useUsdcAllowance } from "../hooks/useUsdc";
 import { Mode, Phase, nowSeconds, useCircleActivity, useCircleDetail, useIsRotaContract, type CircleDetail } from "../hooks/useRota";
-import { bpsToPercent, shortAddress } from "../lib/format";
+import { bpsToPercent, sameAddress, shortAddress } from "../lib/format";
 
 const phaseLabels = ["status.open", "status.active", "status.completed", "status.cancelled"];
 const phaseTones = ["blue", "brand", "stone", "red"] as const;
@@ -33,7 +33,7 @@ function OpenPhasePanel({ c }: { c: CircleDetail }) {
   const collateral = (c.contributionAmount * c.collateralBps) / 10_000n;
   const full = c.memberCount === c.memberCap;
   const now = nowSeconds();
-  const canCancel = user === c.organizer || now > c.openDeadline;
+  const canCancel = sameAddress(user, c.organizer) || now > c.openDeadline;
   const url = `${window.location.origin}/app/circle/${c.address}`;
 
   return (
@@ -207,7 +207,13 @@ function ActivePhasePanel({ c }: { c: CircleDetail }) {
             </div>
           ) : (
             <div className="mt-3">
-              <ApproveThen spender={c.address} amount={c.contributionAmount * remainingRounds}>
+              {/* The allowance is a pre-authorization for future rounds, so the
+                  member need not hold every round's contribution today. */}
+              <ApproveThen
+                spender={c.address}
+                amount={c.contributionAmount * remainingRounds}
+                requireBalance={false}
+              >
                 <Button variant="secondary" onClick={() => void tx("optInAutoPay")}>
                   {t("circle.autopayEnable")}
                 </Button>
@@ -314,8 +320,8 @@ function MembersList({
             >
               <span className="w-6 text-xs text-stone-400 dark:text-stone-500">{i + 1}.</span>
               <span className="font-mono">{shortAddress(m)}</span>
-              {m === c.organizer && <Badge tone="stone">{t("common.organizer")}</Badge>}
-              {user && m.toLowerCase() === user.toLowerCase() && <Badge tone="blue">{t("common.you")}</Badge>}
+              {sameAddress(m, c.organizer) && <Badge tone="stone">{t("common.organizer")}</Badge>}
+              {sameAddress(m, user) && <Badge tone="blue">{t("common.you")}</Badge>}
               <span className="ml-auto flex gap-1">
                 {c.phase === Phase.ACTIVE &&
                   (contributed ? <Badge tone="brand">✓</Badge> : <Badge tone="amber">…</Badge>)}
@@ -341,8 +347,15 @@ export function CircleDetailPage() {
 
   // Provenance gate: the address comes from the URL, so never render actions
   // (join/contribute/approve) against a contract the factory did not deploy.
-  if (isRota === false) {
-    return <EmptyState title={t("circle.untrustedTitle")} hint={t("circle.untrustedBody")} />;
+  // This MUST fail closed — an unresolved check (RPC error, factory address
+  // unconfigured, invalid address in the URL) is not permission to render
+  // approve buttons, so only an explicit `true` gets through.
+  if (!verifying && isRota !== true) {
+    return isRota === false ? (
+      <EmptyState title={t("circle.untrustedTitle")} hint={t("circle.untrustedBody")} />
+    ) : (
+      <EmptyState title={t("circle.verifyFailedTitle")} hint={t("circle.verifyFailedBody")} />
+    );
   }
 
   if (verifying || isLoading || !c) {
@@ -357,9 +370,9 @@ export function CircleDetailPage() {
   const potSize = c.contributionAmount * c.memberCap;
   const myOrderIndex =
     user && c.payoutOrder.length > 0
-      ? c.payoutOrder.findIndex((m) => m.toLowerCase() === user.toLowerCase())
+      ? c.payoutOrder.findIndex((m) => sameAddress(m, user))
       : -1;
-  const isNext = user !== undefined && c.previewRecipient.toLowerCase() === user?.toLowerCase();
+  const isNext = sameAddress(c.previewRecipient, user);
 
   return (
     <div className="space-y-4">

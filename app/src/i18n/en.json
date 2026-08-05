@@ -194,6 +194,9 @@
   "circle": {
     "untrustedTitle": "Unrecognized contract",
     "untrustedBody": "This address was not created by Rota. Don't approve tokens or send funds to it — you may be looking at a fake link. Only open circles and pots from the Rota dashboard.",
+    "verifyFailedTitle": "Couldn't verify this contract",
+    "verifyFailedBody": "Rota couldn't reach the network to confirm this address came from the Rota factory. Actions stay hidden until it is verified — check your connection and reload.",
+    "noActivity": "No activity yet",
     "yourPosition": "Your payout position",
     "position": "Position {{n}}",
     "positionUnknown": "Decided by bidding each round",

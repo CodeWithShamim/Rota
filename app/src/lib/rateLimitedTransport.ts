@@ -131,7 +131,16 @@ export function rateLimitedHttp(url: string, options: Options = {}): Transport {
       return;
     }
 
-    const json = (await res.json()) as unknown;
+    // A gateway can answer 200 with a truncated or non-JSON body (HTML error
+    // pages are common under load). Letting that throw would leave every caller
+    // in this batch pending forever, so treat it as a transient failure.
+    let json: unknown;
+    try {
+      json = await res.json();
+    } catch {
+      requeue(batch, refillMs);
+      return;
+    }
     const list = Array.isArray(json) ? json : [json];
     const byId = new Map<number, { id: number; result?: unknown; error?: RpcError }>(
       list.map((r) => [(r as { id: number }).id, r as never])
@@ -173,7 +182,12 @@ export function rateLimitedHttp(url: string, options: Options = {}): Transport {
         const take = Math.min(Math.floor(tokens), batchSize, queue.length);
         const batch = queue.splice(0, take);
         tokens -= take;
-        void send(batch); // token bucket—not await—governs the send rate
+        // token bucket—not await—governs the send rate. The catch is a
+        // backstop: send() must never leave a caller's promise unsettled
+        // (settling an already-settled promise is a no-op).
+        void send(batch).catch((error: unknown) => {
+          for (const p of batch) p.reject(error);
+        });
       }
     } finally {
       pumping = false;

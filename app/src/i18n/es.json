@@ -194,6 +194,9 @@
   "circle": {
     "untrustedTitle": "Contrato no reconocido",
     "untrustedBody": "Esta dirección no fue creada por Rota. No apruebes tokens ni envíes fondos a ella: podría ser un enlace falso. Abre círculos y botes solo desde el panel de Rota.",
+    "verifyFailedTitle": "No se pudo verificar este contrato",
+    "verifyFailedBody": "Rota no pudo conectarse a la red para confirmar que esta dirección proviene de la fábrica de Rota. Las acciones permanecen ocultas hasta verificarlo: revisa tu conexión y recarga.",
+    "noActivity": "Aún no hay actividad",
     "yourPosition": "Tu posición de pago",
     "position": "Posición {{n}}",
     "positionUnknown": "Se decide por subasta en cada ronda",

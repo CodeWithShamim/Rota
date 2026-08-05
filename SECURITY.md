@@ -77,6 +77,13 @@ that point, an exit pays the haircut instead of the giving cut; if an organizer
 sets `givingBps` higher than `earlyExitHaircutBps`, exiting early remains cheaper
 than staying. Choose `earlyExitHaircutBps >= givingBps` if that matters.
 
+The haircut pool is paid out only by `withdraw()`, pro-rata against the deposit
+total snapshotted at unlock. An exit that empties the pot therefore leaves nobody
+to compensate, so it takes **no** haircut and sweeps the pool left by earlier
+exits — the last member standing is exactly who the pool is for. Without this the
+pool would be locked in the contract forever (the snapshot, and every remaining
+claim, would be zero).
+
 ## Frontend limitations
 
 - **FX rates are indicative.** Local-currency figures come from a free client-side

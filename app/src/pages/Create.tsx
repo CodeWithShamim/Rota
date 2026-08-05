@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
-import { isAddress, type Address } from "viem";
+import { isAddress, parseEventLogs, type Address } from "viem";
 import { useAccount, usePublicClient } from "wagmi";
 import { rotaFactoryAbi } from "../abi";
 import { AmountInput } from "../components/AmountInput";
@@ -203,6 +203,23 @@ export function CreatePage() {
 
   const isBid = product === "bid";
 
+  /**
+   * Resolve the clone address the factory just deployed from OUR receipt.
+   * Reading `getCircles()` and taking the last entry is a race: anyone else
+   * creating a circle between our tx and the read would hand the user a
+   * stranger's address to open and share as an invite.
+   */
+  async function deployedAddressFromReceipt(
+    hash: `0x${string}`,
+    eventName: "CircleCreated" | "GoalPotCreated"
+  ): Promise<Address | undefined> {
+    if (!pc) return undefined;
+    const receipt = await pc.waitForTransactionReceipt({ hash });
+    const [log] = parseEventLogs({ abi: rotaFactoryAbi, eventName, logs: receipt.logs });
+    const args = log?.args as { circle?: Address; pot?: Address } | undefined;
+    return args?.circle ?? args?.pot;
+  }
+
   // ------------------------------------------------------------- validation
   const circleBasicsOk = circle.name.trim() !== "" && circle.contribution !== undefined && circle.contribution > 0n;
   const circleRulesOk = !circle.giving || isAddress(circle.givingRecipient);
@@ -223,11 +240,13 @@ export function CreatePage() {
         memberCap: BigInt(circle.members),
         roundDuration: BigInt(circle.roundDays) * DAY,
         mode: isBid ? 2 : circle.randomOrder ? 1 : 0,
-        collateralBps: BigInt(circle.collateralPct * 100),
+        // BigInt() throws on a non-integer, and percentage sliders can carry
+        // fractional steps — round every bps conversion.
+        collateralBps: BigInt(Math.round(circle.collateralPct * 100)),
         givingBps: circle.giving ? BigInt(Math.round(circle.givingPct * 100)) : 0n,
         givingRecipient: circle.giving ? (circle.givingRecipient as Address) : ZERO,
-        bidWindowBps: isBid ? BigInt(circle.bidWindowPct * 100) : 0n,
-        maxDiscountBps: isBid ? BigInt(circle.maxDiscountPct * 100) : 0n,
+        bidWindowBps: isBid ? BigInt(Math.round(circle.bidWindowPct * 100)) : 0n,
+        maxDiscountBps: isBid ? BigInt(Math.round(circle.maxDiscountPct * 100)) : 0n,
         openDeadline: BigInt(Math.floor(Date.now() / 1000)) + BigInt(circle.openDeadlineDays) * DAY,
         inviteOnly: circle.inviteOnly,
         name: circle.name.trim(),
@@ -239,12 +258,8 @@ export function CreatePage() {
         args: [params],
       });
       if (!hash) return;
-      const circles = (await pc.readContract({
-        address: deployments.factory,
-        abi: rotaFactoryAbi,
-        functionName: "getCircles",
-      })) as readonly Address[];
-      setDeployed({ kind: "circle", address: circles[circles.length - 1], name: params.name });
+      const address = await deployedAddressFromReceipt(hash, "CircleCreated");
+      if (address) setDeployed({ kind: "circle", address, name: params.name });
     } finally {
       setCreating(false);
     }
@@ -260,7 +275,7 @@ export function CreatePage() {
         deadline: BigInt(Math.floor(Date.now() / 1000)) + BigInt(pot.deadlineDays) * DAY,
         memberCap: BigInt(pot.memberCap),
         minContribution: pot.minContribution ?? 0n,
-        earlyExitHaircutBps: BigInt(pot.haircutPct * 100),
+        earlyExitHaircutBps: BigInt(Math.round(pot.haircutPct * 100)),
         givingBps: pot.giving ? BigInt(Math.round(pot.givingPct * 100)) : 0n,
         givingRecipient: pot.giving ? (pot.givingRecipient as Address) : ZERO,
         inviteOnly: pot.inviteOnly,
@@ -273,12 +288,8 @@ export function CreatePage() {
         args: [params],
       });
       if (!hash) return;
-      const pots = (await pc.readContract({
-        address: deployments.factory,
-        abi: rotaFactoryAbi,
-        functionName: "getGoalPots",
-      })) as readonly Address[];
-      setDeployed({ kind: "pot", address: pots[pots.length - 1], name: params.name });
+      const address = await deployedAddressFromReceipt(hash, "GoalPotCreated");
+      if (address) setDeployed({ kind: "pot", address, name: params.name });
     } finally {
       setCreating(false);
     }

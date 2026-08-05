@@ -59,7 +59,9 @@ export function ActivityFeed({ items }: { items: ActivityItem[] }) {
     .map((item) => ({ item, text: describe(item, t, i18n.language) }))
     .filter((r) => r.text !== null);
   if (rows.length === 0) {
-    return <p className="py-4 text-center text-sm text-stone-500 dark:text-stone-400">{t("common.loading")}</p>;
+    // The caller renders a skeleton while the log scan is in flight, so an empty
+    // list here means there genuinely is no activity — not that we are loading.
+    return <p className="py-4 text-center text-sm text-stone-500 dark:text-stone-400">{t("circle.noActivity")}</p>;
   }
   return (
     <ul className="space-y-1">

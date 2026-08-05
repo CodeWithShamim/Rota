@@ -9,7 +9,7 @@ import type { Abi, Address, PublicClient } from "viem";
 import { useAccount, usePublicClient } from "wagmi";
 import { goalPotAbi, reputationRegistryAbi, rotaCircleAbi, rotaFactoryAbi } from "../abi";
 import { activeChain, deployments } from "../config/chain";
-import { fetchExplorerLogs } from "../lib/explorerLogs";
+import { EXPLORER_PAGE_LIMIT, fetchExplorerLogs } from "../lib/explorerLogs";
 
 export const Phase = { OPEN: 0, ACTIVE: 1, COMPLETED: 2, CANCELLED: 3 } as const;
 export const Mode = { FIXED: 0, RANDOM: 1, BID: 2 } as const;
@@ -346,8 +346,14 @@ async function fetchContractActivity(
             entry.scannedTo + 1n,
             backfillTo
           );
-          entry.items = [...entry.items, ...items];
-          entry.scannedTo = backfillTo;
+          // A full page means the indexer truncated the range: advancing
+          // scannedTo past it would silently drop the remainder forever (the
+          // gap is also persisted to localStorage). Discard the partial page
+          // and let the chunked RPC scan below cover the range instead.
+          if (items.length < EXPLORER_PAGE_LIMIT) {
+            entry.items = [...entry.items, ...items];
+            entry.scannedTo = backfillTo;
+          }
         } catch {
           /* explorer unavailable — the chunked RPC scan below covers everything */
         }

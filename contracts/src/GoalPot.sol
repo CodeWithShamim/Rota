@@ -224,19 +224,33 @@ contract GoalPot is ReentrancyGuard {
     ///         to the members who stay. Recorded as a (mild) reputation penalty.
     ///         Unavailable once the pot is unlockable — use {withdraw} instead (this
     ///         also prevents dodging the giving cut once the goal is effectively met).
+    /// @dev The haircut pool is only ever paid out by {withdraw}, pro-rata against
+    ///      `unlockTotal`. If every depositor exits early, `unlockTotal` is 0 at
+    ///      unlock and the pool would be stranded in the contract forever. So when
+    ///      an exit empties the pot there is no stayer left to compensate: take no
+    ///      haircut, and hand the pool accumulated from earlier exits to the last
+    ///      member standing — which is exactly who the pool is for.
     function emergencyWithdraw() external nonReentrant {
         if (phase != Phase.LOCKED || _unlockable()) revert PotUnlocked();
         uint256 principal = deposited[msg.sender];
         if (principal == 0) revert NothingToWithdraw();
 
-        uint256 haircut = (principal * earlyExitHaircutBps) / BPS;
+        bool lastOut = principal == totalDeposited;
+        uint256 haircut = lastOut ? 0 : (principal * earlyExitHaircutBps) / BPS;
+        uint256 payout = principal - haircut;
+
         deposited[msg.sender] = 0;
         totalDeposited -= principal;
-        totalHaircut += haircut;
+        if (lastOut) {
+            payout += totalHaircut;
+            totalHaircut = 0;
+        } else {
+            totalHaircut += haircut;
+        }
 
         reputationRegistry.recordEarlyExit(msg.sender);
-        emit EarlyExit(msg.sender, principal - haircut, haircut);
-        token.safeTransfer(msg.sender, principal - haircut);
+        emit EarlyExit(msg.sender, payout, haircut);
+        token.safeTransfer(msg.sender, payout);
     }
 
     /// @notice Add/remove invitees (organizer only, while locked).
