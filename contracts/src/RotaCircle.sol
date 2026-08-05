@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.24;
+pragma solidity 0.8.30;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -53,6 +53,7 @@ contract RotaCircle is ReentrancyGuard {
         uint256 maxDiscountBps; // BID: cap on bid discount, ≤ 3000
         uint256 openDeadline; // timestamp by which the circle must fill or be cancellable
         bool inviteOnly; // restrict join() to the organizer's allowlist
+        bytes32 seedCommit; // RANDOM_ORDER: keccak256(abi.encode(secret)) — see activateWithSeed
         string name;
     }
 
@@ -70,6 +71,19 @@ contract RotaCircle is ReentrancyGuard {
     uint256 public constant MAX_GIVING_BPS = 500; // 5%
     uint256 public constant MAX_DISCOUNT_LIMIT = 3_000; // 30%
     uint256 public constant CURE_PENALTY_BPS = 500; // 5% penalty on arrears when curing
+    /// @notice How long the organizer has to reveal the RANDOM_ORDER seed after the
+    ///         circle fills, before anyone may activate on join order instead.
+    uint256 public constant REVEAL_WINDOW = 1 days;
+    /// @notice Gas forwarded to a best-effort payout transfer — see {_payOrCredit}.
+    uint256 public constant PAYOUT_GAS = 250_000;
+    /// @notice Upper bound on a round's length. Without it an organizer could set a
+    ///         duration so large that `startTime + (r + 1) * roundDuration` overflows
+    ///         — settleRound would then revert forever and escrowed funds would be
+    ///         stranded — or simply push every deadline past any human timescale.
+    uint256 public constant MAX_ROUND_DURATION = 365 days;
+    /// @notice Upper bound on how far ahead `openDeadline` may sit, so a circle that
+    ///         never fills always becomes cancellable within a bounded time.
+    uint256 public constant MAX_OPEN_WINDOW = 365 days;
 
     // ---------------------------------------------------------------- state
 
@@ -99,6 +113,14 @@ contract RotaCircle is ReentrancyGuard {
     uint256 public startTime; // set at activation
     uint256 public currentRound; // 0-indexed; == memberCap when completed
     address[] public payoutOrder; // FIXED_ORDER / RANDOM_ORDER only
+
+    /// @notice RANDOM_ORDER commitment: keccak256(abi.encode(secret)), fixed at
+    ///         creation before any member (and therefore any permutation) is known.
+    bytes32 public seedCommit;
+    /// @notice Timestamp the circle filled; anchors the reveal window. 0 until full.
+    uint256 public fullAt;
+    /// @notice Block the circle filled; supplies the validator-side half of the seed.
+    uint256 public fullBlock;
 
     mapping(uint256 => mapping(address => bool)) public hasContributed;
     mapping(uint256 => uint256) public roundContributionCount;
@@ -142,6 +164,8 @@ contract RotaCircle is ReentrancyGuard {
     error NotInDefault();
     error NotOrganizer();
     error OpenDeadlineNotReached();
+    error InvalidReveal();
+    error RevealWindowOpen();
 
     // --------------------------------------------------------------- events
 
@@ -163,6 +187,9 @@ contract RotaCircle is ReentrancyGuard {
     event CircleCancelled();
     event AllowlistUpdated(address indexed account, bool allowed);
     event PayoutDeferred(address indexed to, uint256 amount);
+    event CircleFilled(uint256 fullAt, uint256 fullBlock);
+    event SeedRevealed(bytes32 indexed commitment);
+    event SeedRevealTimedOut();
 
     // ---------------------------------------------------------- initializer
 
@@ -187,13 +214,17 @@ contract RotaCircle is ReentrancyGuard {
         if (
             p.token == address(0) || organizer_ == address(0) || registry_ == address(0) || p.contributionAmount == 0
                 || p.memberCap < MIN_MEMBERS || p.memberCap > MAX_MEMBERS || p.roundDuration == 0
-                || p.openDeadline <= block.timestamp || p.givingBps > MAX_GIVING_BPS
+                || p.roundDuration > MAX_ROUND_DURATION || p.openDeadline <= block.timestamp
+                || p.openDeadline > block.timestamp + MAX_OPEN_WINDOW || p.givingBps > MAX_GIVING_BPS
                 || (p.givingBps > 0 && p.givingRecipient == address(0)) || p.collateralBps > BPS
         ) revert InvalidParams();
         if (p.mode == Mode.BID && (p.bidWindowBps == 0 || p.bidWindowBps >= BPS || p.maxDiscountBps > MAX_DISCOUNT_LIMIT))
         {
             revert InvalidParams();
         }
+        // RANDOM_ORDER is unusable without a commitment: there would be nothing to
+        // reveal and every activation would fall back to join order.
+        if (p.mode == Mode.RANDOM_ORDER && p.seedCommit == bytes32(0)) revert InvalidParams();
 
         factory = msg.sender;
         token = IERC20(p.token);
@@ -211,6 +242,7 @@ contract RotaCircle is ReentrancyGuard {
         maxDiscountBps = p.maxDiscountBps;
         openDeadline = p.openDeadline;
         inviteOnly = p.inviteOnly;
+        seedCommit = p.seedCommit;
 
         // organizer auto-joins; collateral is transferred in by the factory
         members.push(organizer_);
@@ -235,6 +267,15 @@ contract RotaCircle is ReentrancyGuard {
         collateralBalance[msg.sender] = coll;
         emit MemberJoined(msg.sender, coll, members.length);
 
+        // Filling the circle fixes both halves of the RANDOM_ORDER seed: the
+        // member set and the block whose hash the organizer could not know when
+        // they committed. It also starts the organizer's reveal window.
+        if (members.length == memberCap) {
+            fullAt = block.timestamp;
+            fullBlock = block.number;
+            emit CircleFilled(fullAt, fullBlock);
+        }
+
         if (coll > 0) token.safeTransferFrom(msg.sender, address(this), coll);
     }
 
@@ -244,29 +285,67 @@ contract RotaCircle is ReentrancyGuard {
     function setAllowlist(address[] calldata accounts, bool allowed) external {
         if (msg.sender != organizer) revert NotOrganizer();
         if (phase != Phase.OPEN) revert WrongPhase();
-        for (uint256 i; i < accounts.length; ++i) {
+        uint256 len = accounts.length;
+        for (uint256 i; i < len; ++i) {
             allowlist[accounts[i]] = allowed;
             emit AllowlistUpdated(accounts[i], allowed);
         }
     }
 
     /// @notice Start the circle once full. Callable by anyone.
-    /// @dev RANDOM_ORDER derives its permutation from
-    ///      keccak256(blockhash(block.number-1), address(this), members). A block
-    ///      producer can in theory grind blockhashes to influence the order; this is
-    ///      an accepted MVP trade-off (order only changes WHEN you receive, never
-    ///      WHETHER you receive). VRF is future work.
+    /// @dev For RANDOM_ORDER this is the FALLBACK path: it only becomes available
+    ///      once the organizer's {REVEAL_WINDOW} has elapsed without a reveal, and
+    ///      it activates on join order. That guarantees an organizer who loses (or
+    ///      withholds) their secret can never hold the circle hostage.
     function activate() external {
         if (phase != Phase.OPEN) revert WrongPhase();
         if (members.length != memberCap) revert CircleNotFull();
+        if (mode == Mode.RANDOM_ORDER) {
+            if (block.timestamp < fullAt + REVEAL_WINDOW) revert RevealWindowOpen();
+            emit SeedRevealTimedOut();
+        }
+        _activate(bytes32(0), false);
+    }
 
+    /// @notice RANDOM_ORDER: reveal the seed committed at creation and start the
+    ///         circle with the resulting shuffle.
+    /// @dev Commit–reveal splits control of the permutation so that neither side
+    ///      can steer it:
+    ///      - The organizer fixes `secret` at creation, before any member has
+    ///        joined, so they cannot aim it at a particular ordering.
+    ///      - `blockhash(fullBlock)` is fixed when the last member joins and is
+    ///        unknown at commit time. A validator could grind it, but without
+    ///        `secret` they cannot compute the permutation it produces, so the
+    ///        grinding is blind.
+    ///      Residual: at reveal time the organizer can see the resulting order and
+    ///      choose to withhold, falling back to join order after REVEAL_WINDOW —
+    ///      a one-bit choice between two orders neither of which they picked. That
+    ///      is inherent to any reveal scheme without a VRF (Arc has none, and
+    ///      block.prevrandao is always 0 there — see docs/ARC_NOTES.md).
+    /// @param secret The pre-image committed as `seedCommit` at creation.
+    function activateWithSeed(bytes32 secret) external {
+        if (phase != Phase.OPEN) revert WrongPhase();
+        if (mode != Mode.RANDOM_ORDER) revert WrongPhase();
+        if (members.length != memberCap) revert CircleNotFull();
+        if (keccak256(abi.encode(secret)) != seedCommit) revert InvalidReveal();
+        emit SeedRevealed(seedCommit);
+        _activate(secret, true);
+    }
+
+    /// @dev Shared activation. `shuffle` is only ever true on the reveal path.
+    function _activate(bytes32 secret, bool shuffle) internal {
         phase = Phase.ACTIVE;
         startTime = block.timestamp;
 
         if (mode != Mode.BID) {
             payoutOrder = members;
-            if (mode == Mode.RANDOM_ORDER) {
-                bytes32 seed = keccak256(abi.encode(blockhash(block.number - 1), address(this), members));
+            if (shuffle) {
+                bytes32 seed = keccak256(abi.encode(secret, blockhash(fullBlock), address(this), members));
+                // Fisher–Yates. Static analysers flag `% (i + 1)` on a hash as a
+                // weak PRNG; here the seed's entropy is the organizer's committed
+                // 256-bit secret, which no validator knows, so the draw is not
+                // block-predictable. Modulo bias over 2^256 into i+1 <= 20 is nil.
+                // slither-disable-next-line weak-prng
                 for (uint256 i = payoutOrder.length - 1; i > 0; --i) {
                     uint256 j = uint256(keccak256(abi.encode(seed, i))) % (i + 1);
                     (payoutOrder[i], payoutOrder[j]) = (payoutOrder[j], payoutOrder[i]);
@@ -360,12 +439,13 @@ contract RotaCircle is ReentrancyGuard {
             if (!(allIn || deadlinePassed)) revert TooEarlyToSettle();
         }
 
+        // ---------------------------------------------------------- effects
         uint256 pot = roundContributionCount[r] * contributionAmount + penaltyCarry;
         penaltyCarry = 0;
 
         if (!allIn) pot += _slashDefaulters(r);
 
-        uint256 givingCut;
+        uint256 givingCut = 0;
         if (givingBps > 0 && pot > 0) {
             givingCut = (pot * givingBps) / BPS;
             pot -= givingCut;
@@ -374,14 +454,22 @@ contract RotaCircle is ReentrancyGuard {
         (address recipient, uint256 payout, uint256 discountBps) = _distributePot(r, pot);
 
         currentRound = r + 1;
-        emit RoundSettled(r, recipient, payout, discountBps, givingCut);
+        bool completed = currentRound == memberCap;
+        if (completed) phase = Phase.COMPLETED;
 
-        if (currentRound == memberCap) {
-            phase = Phase.COMPLETED;
+        emit RoundSettled(r, recipient, payout, discountBps, givingCut);
+        if (completed) emit CircleCompleted();
+
+        // ----------------------------------------------------- interactions
+        // Every external call is made only after all state is final, so a
+        // misbehaving registry or token can never observe (or re-enter into) a
+        // half-settled round. nonReentrant already blocks re-entry; this makes
+        // the ordering correct on its own terms too.
+        if (!allIn) _recordDefaults(r);
+        if (completed) {
             for (uint256 i; i < n; ++i) {
                 if (!inDefault[members[i]]) reputationRegistry.recordCompletion(members[i]);
             }
-            emit CircleCompleted();
         }
 
         if (givingCut > 0) {
@@ -499,6 +587,9 @@ contract RotaCircle is ReentrancyGuard {
     /// @dev Slash collateral of every member who missed round `r`; returns the total
     ///      slashed value added to the pot. Uncovered value is recorded as shortfall
     ///      (the recipient receives a smaller pot — see SECURITY.md).
+    /// @dev Pure state transition: reporting the defaults to the registry is an
+    ///      external call and is deferred to {_recordDefaults}, called by
+    ///      settleRound once every state write is final.
     function _slashDefaulters(uint256 r) internal returns (uint256 totalSlashed) {
         uint256 n = members.length;
         for (uint256 i; i < n; ++i) {
@@ -512,8 +603,19 @@ contract RotaCircle is ReentrancyGuard {
             shortfallAmount[m] += shortfall;
             inDefault[m] = true;
             totalSlashed += slash;
-            reputationRegistry.recordDefault(m);
             emit Defaulted(m, r, slash, shortfall);
+        }
+    }
+
+    /// @dev Report round `r`'s defaulters to the reputation registry. Split out of
+    ///      {_slashDefaulters} so settlement performs no external call until its
+    ///      state is final; the defaulter set is exactly the members with no
+    ///      recorded contribution for `r`.
+    function _recordDefaults(uint256 r) internal {
+        uint256 n = members.length;
+        for (uint256 i; i < n; ++i) {
+            address m = members[i];
+            if (!hasContributed[r][m]) reputationRegistry.recordDefault(m);
         }
     }
 
@@ -530,7 +632,7 @@ contract RotaCircle is ReentrancyGuard {
         if (recipient == address(0)) {
             // everyone remaining is in default: distribute to non-defaulted members,
             // carrying rounding dust (and the everyone-defaulted edge) forward
-            uint256 eligible;
+            uint256 eligible = 0;
             for (uint256 i; i < n; ++i) {
                 if (!inDefault[members[i]]) ++eligible;
             }
@@ -539,7 +641,9 @@ contract RotaCircle is ReentrancyGuard {
                 for (uint256 i; i < n; ++i) {
                     if (!inDefault[members[i]]) dividendBalance[members[i]] += per;
                 }
-                penaltyCarry += pot - per * eligible;
+                // remainder via modulo, not `pot - per * eligible`: identical
+                // value without multiplying back a divided quantity
+                penaltyCarry += pot % eligible;
             } else {
                 penaltyCarry += pot;
             }
@@ -556,8 +660,9 @@ contract RotaCircle is ReentrancyGuard {
                 for (uint256 i; i < n; ++i) {
                     dividendBalance[members[i]] += per;
                 }
-                // recipient absorbs division dust
-                payout = pot - per * n;
+                // recipient absorbs division dust; `discount % n` is exactly
+                // `discount - per * n` without multiplying back a division
+                payout = pot - discount + (discount % n);
             }
         }
         hasWon[recipient] = true;
@@ -568,12 +673,48 @@ contract RotaCircle is ReentrancyGuard {
     ///      forever, freezing every member's contributions and collateral. Instead:
     ///      attempt the transfer, and on failure credit the amount to the payee's
     ///      dividend balance (withdrawable later via withdrawDividends).
+    ///
+    ///      The call is gas-capped. Returning `false` is not the only way a hostile
+    ///      token can fail: it can also burn every wei of forwarded gas, and the
+    ///      63/64 rule would leave this frame unable to finish — reverting the whole
+    ///      settlement on every retry. PAYOUT_GAS is far above a real ERC-20
+    ///      transfer (USDC's proxy costs ~90k) and bounds that griefing.
+    ///
+    ///      Crediting after the call is inherent to "try to push, fall back to
+    ///      pull": the outcome is only known once the call returns. It is safe —
+    ///      every fund-moving entry point is nonReentrant, and the credit is the
+    ///      failure branch, so a reentrant token cannot mint itself a balance.
+    // slither-disable-next-line reentrancy-benign,reentrancy-no-eth
     function _payOrCredit(address to, uint256 amount) internal {
-        (bool ok, bytes memory ret) = address(token).call(abi.encodeCall(token.transfer, (to, amount)));
-        bool sent = ok && (ret.length == 0 ? address(token).code.length > 0 : (ret.length >= 32 && abi.decode(ret, (bool))));
-        if (sent) return;
+        if (_tryTransfer(to, amount)) return;
         dividendBalance[to] += amount;
         emit PayoutDeferred(to, amount);
+    }
+
+    /// @dev Gas-capped, return-bomb-safe best-effort ERC-20 transfer. Reports
+    ///      failure instead of reverting.
+    ///
+    ///      The call caps BOTH gas and returndata copied. Without the returndata
+    ///      cap a hostile token could return megabytes and charge the caller for
+    ///      the memory expansion — the same settlement-bricking griefing the gas
+    ///      cap exists to prevent. The EVM copies min(returndatasize, 32) bytes
+    ///      into scratch space, so the blob is never materialised.
+    function _tryTransfer(address to, uint256 amount) internal returns (bool) {
+        bytes memory payload = abi.encodeCall(IERC20.transfer, (to, amount));
+        address t = address(token);
+        uint256 gasCap = PAYOUT_GAS;
+        bool called;
+        uint256 size;
+        uint256 word;
+        assembly ("memory-safe") {
+            called := call(gasCap, t, 0, add(payload, 0x20), mload(payload), 0x00, 0x20)
+            size := returndatasize()
+            word := mload(0x00)
+        }
+        if (!called) return false;
+        // pre-EIP-20 tokens (USDT-style) return nothing on success
+        if (size == 0) return t.code.length > 0;
+        return size >= 32 && word != 0;
     }
 
     /// @dev Recipient selection. BID mode: the best bidder if still eligible,

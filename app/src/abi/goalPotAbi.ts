@@ -20,6 +20,19 @@ export const goalPotAbi = [
   },
   {
     "type": "function",
+    "name": "MAX_DURATION",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "MAX_GIVING_BPS",
     "inputs": [],
     "outputs": [
@@ -34,6 +47,19 @@ export const goalPotAbi = [
   {
     "type": "function",
     "name": "MAX_HAIRCUT_BPS",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "PAYOUT_GAS",
     "inputs": [],
     "outputs": [
       {

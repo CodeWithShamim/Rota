@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.24;
+pragma solidity 0.8.30;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import {IReputationRegistry} from "./interfaces/IReputationRegistry.sol";
 
 /// @title ReputationRegistry
@@ -11,7 +12,9 @@ import {IReputationRegistry} from "./interfaces/IReputationRegistry.sol";
 /// @dev    Write access is a two-step trust chain: the owner sets the factory once,
 ///         and the factory authorizes each clone it deploys. Scores are computed on
 ///         read with a transparent, fixed formula so wallets/lenders can verify it.
-contract ReputationRegistry is Ownable, IReputationRegistry {
+///         Ownership uses {Ownable2Step}: transfers require the new owner to accept,
+///         so a mistyped address cannot orphan the registry's only admin function.
+contract ReputationRegistry is Ownable2Step, IReputationRegistry {
     // ---------------------------------------------------------------- types
 
     struct Stats {
@@ -73,6 +76,7 @@ contract ReputationRegistry is Ownable, IReputationRegistry {
     /// @param writer The clone address.
     function authorize(address writer) external {
         if (msg.sender != factory) revert NotFactory();
+        if (writer == address(0)) revert ZeroAddress();
         authorized[writer] = true;
         emit WriterAuthorized(writer);
     }

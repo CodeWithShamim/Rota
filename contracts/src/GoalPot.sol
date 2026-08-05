@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.24;
+pragma solidity 0.8.30;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -43,6 +43,11 @@ contract GoalPot is ReentrancyGuard {
     uint256 public constant BPS = 10_000;
     uint256 public constant MAX_GIVING_BPS = 500; // 5%
     uint256 public constant MAX_HAIRCUT_BPS = 1_000; // 10%
+    /// @notice Gas forwarded to a best-effort giving-cut transfer — see {_tryTransfer}.
+    uint256 public constant PAYOUT_GAS = 250_000;
+    /// @notice Upper bound on how far ahead the unlock deadline may sit, so deposits
+    ///         can never be locked past a bounded horizon if the target is not met.
+    uint256 public constant MAX_DURATION = 365 days;
 
     // ---------------------------------------------------------------- state
 
@@ -122,7 +127,8 @@ contract GoalPot is ReentrancyGuard {
 
         if (
             p.token == address(0) || organizer_ == address(0) || registry_ == address(0) || p.targetAmount == 0
-                || p.deadline <= block.timestamp || p.givingBps > MAX_GIVING_BPS
+                || p.deadline <= block.timestamp || p.deadline > block.timestamp + MAX_DURATION
+                || p.givingBps > MAX_GIVING_BPS
                 || (p.givingBps > 0 && p.givingRecipient == address(0)) || p.earlyExitHaircutBps > MAX_HAIRCUT_BPS
         ) revert InvalidParams();
 
@@ -151,19 +157,22 @@ contract GoalPot is ReentrancyGuard {
         if (phase != Phase.LOCKED || _unlockable()) revert PotUnlocked();
         if (amount == 0 || amount < minContribution) revert BelowMinContribution();
 
-        if (!isMember[msg.sender]) {
+        bool joining = !isMember[msg.sender];
+        if (joining) {
             if (inviteOnly && !allowlist[msg.sender]) revert NotInvited();
             if (memberCap != 0 && members.length >= memberCap) revert PotFull();
             members.push(msg.sender);
             isMember[msg.sender] = true;
-            // reputation is credited once per member per pot: per-deposit credit
-            // would let anyone farm the score with unlimited dust deposits
-            reputationRegistry.recordContribution(msg.sender);
         }
 
         deposited[msg.sender] += amount;
         totalDeposited += amount;
         emit Deposited(msg.sender, amount, totalDeposited);
+
+        // Interactions last (checks-effects-interactions). Reputation is credited
+        // once per member per pot: per-deposit credit would let anyone farm the
+        // score with unlimited dust deposits.
+        if (joining) reputationRegistry.recordContribution(msg.sender);
         token.safeTransferFrom(msg.sender, address(this), amount);
     }
 
@@ -195,9 +204,10 @@ contract GoalPot is ReentrancyGuard {
 
         deposited[msg.sender] = 0;
         totalDeposited -= principal;
-        if (targetReached) reputationRegistry.recordCompletion(msg.sender);
         emit Withdrawn(msg.sender, principal, bonus, givingCut);
 
+        // Interactions last (checks-effects-interactions).
+        if (targetReached) reputationRegistry.recordCompletion(msg.sender);
         if (givingCut > 0) {
             // never let an unpayable giving recipient (e.g. USDC-blacklisted) block
             // every member's withdrawal: defer the cut and let anyone retry later
@@ -259,7 +269,8 @@ contract GoalPot is ReentrancyGuard {
     function setAllowlist(address[] calldata accounts, bool allowed) external {
         if (msg.sender != organizer) revert NotOrganizer();
         if (phase != Phase.LOCKED) revert PotUnlocked();
-        for (uint256 i; i < accounts.length; ++i) {
+        uint256 len = accounts.length;
+        for (uint256 i; i < len; ++i) {
             allowlist[accounts[i]] = allowed;
             emit AllowlistUpdated(accounts[i], allowed);
         }
@@ -293,8 +304,25 @@ contract GoalPot is ReentrancyGuard {
     }
 
     /// @dev Best-effort ERC-20 transfer that reports failure instead of reverting.
+    ///      Caps BOTH forwarded gas and returndata copied, so a hostile token can
+    ///      neither burn the caller's gas budget nor return a multi-megabyte blob
+    ///      to charge them for the memory expansion — either would brick every
+    ///      member's withdrawal. See RotaCircle._tryTransfer for the full rationale.
     function _tryTransfer(address to, uint256 amount) internal returns (bool) {
-        (bool ok, bytes memory ret) = address(token).call(abi.encodeCall(token.transfer, (to, amount)));
-        return ok && (ret.length == 0 ? address(token).code.length > 0 : (ret.length >= 32 && abi.decode(ret, (bool))));
+        bytes memory payload = abi.encodeCall(IERC20.transfer, (to, amount));
+        address t = address(token);
+        uint256 gasCap = PAYOUT_GAS;
+        bool called;
+        uint256 size;
+        uint256 word;
+        assembly ("memory-safe") {
+            called := call(gasCap, t, 0, add(payload, 0x20), mload(payload), 0x00, 0x20)
+            size := returndatasize()
+            word := mload(0x00)
+        }
+        if (!called) return false;
+        // pre-EIP-20 tokens (USDT-style) return nothing on success
+        if (size == 0) return t.code.length > 0;
+        return size >= 32 && word != 0;
     }
 }

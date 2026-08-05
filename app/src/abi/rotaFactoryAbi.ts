@@ -136,6 +136,11 @@ export const rotaFactoryAbi = [
             "internalType": "bool"
           },
           {
+            "name": "seedCommit",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
             "name": "name",
             "type": "string",
             "internalType": "string"
@@ -407,6 +412,11 @@ export const rotaFactoryAbi = [
             "name": "inviteOnly",
             "type": "bool",
             "internalType": "bool"
+          },
+          {
+            "name": "seedCommit",
+            "type": "bytes32",
+            "internalType": "bytes32"
           },
           {
             "name": "name",

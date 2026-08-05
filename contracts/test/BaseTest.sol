@@ -21,6 +21,8 @@ abstract contract BaseTest is Test {
     uint256 internal constant CONTRIBUTION = 100e6; // 100 USDC
     uint256 internal constant ROUND = 7 days;
     uint256 internal constant COLLATERAL_BPS = 10_000; // 1x contribution
+    /// @dev RANDOM_ORDER commit–reveal secret used across the suite.
+    bytes32 internal constant TEST_SEED = keccak256("rota.test.seed");
 
     function setUp() public virtual {
         vm.warp(30 days); // move away from t=0 so openDeadline math is sane
@@ -58,6 +60,7 @@ abstract contract BaseTest is Test {
             maxDiscountBps: mode == RotaCircle.Mode.BID ? 3_000 : 0,
             openDeadline: block.timestamp + 30 days,
             inviteOnly: false,
+            seedCommit: mode == RotaCircle.Mode.RANDOM_ORDER ? keccak256(abi.encode(TEST_SEED)) : bytes32(0),
             name: "Test Circle"
         });
     }
@@ -79,7 +82,13 @@ abstract contract BaseTest is Test {
 
     function createActiveCircle(RotaCircle.CircleParams memory p) internal returns (RotaCircle circle) {
         circle = createFullCircle(p);
-        circle.activate();
+        // RANDOM_ORDER activates through the commit–reveal path; the no-arg
+        // activate() is the post-timeout join-order fallback.
+        if (p.mode == RotaCircle.Mode.RANDOM_ORDER) {
+            circle.activateWithSeed(TEST_SEED);
+        } else {
+            circle.activate();
+        }
     }
 
     function contributeAll(RotaCircle circle, uint256 n) internal {

@@ -417,6 +417,10 @@ export interface CircleDetail extends CircleSummary {
   openDeadline: bigint;
   inviteOnly: boolean;
   penaltyCarry: bigint;
+  /** timestamp the circle filled (0 until full) — anchors the reveal window */
+  fullAt: bigint;
+  /** seconds the organizer has to reveal the RANDOM_ORDER seed after filling */
+  revealWindow: bigint;
   members: readonly Address[];
   payoutOrder: readonly Address[];
   bestBid: { bidder: Address; discountBps: number; exists: boolean };
@@ -460,12 +464,14 @@ export function useCircleDetail(address: Address | undefined) {
         user ? read("allowlist", [user]) : false,
         user ? read("cureCost", [user]) : 0n,
         read("previewRecipient"),
-      ]) as Promise<[bigint, bigint, Address, bigint, bigint, boolean, bigint, readonly Address[], readonly Address[], boolean, boolean, bigint, Address]>;
+        read("fullAt"),
+        read("REVEAL_WINDOW"),
+      ]) as Promise<[bigint, bigint, Address, bigint, bigint, boolean, bigint, readonly Address[], readonly Address[], boolean, boolean, bigint, Address, bigint, bigint]>;
 
       const summary = await fetchCircleSummary(pc!, address!, user);
       const round = summary.phase === Phase.ACTIVE ? summary.currentRound : 0n;
       const bestBidRaw = (await read("bestBid", [round])) as readonly [Address, number, boolean];
-      const [collateralBps, givingBps, givingRecipient, maxDiscountBps, openDeadline, inviteOnly, penaltyCarry, members, payoutOrder, autoPayOptIn, allowlisted, cureCost, previewRecipient] =
+      const [collateralBps, givingBps, givingRecipient, maxDiscountBps, openDeadline, inviteOnly, penaltyCarry, members, payoutOrder, autoPayOptIn, allowlisted, cureCost, previewRecipient, fullAt, revealWindow] =
         await staticsPromise;
 
       return {
@@ -484,6 +490,8 @@ export function useCircleDetail(address: Address | undefined) {
         allowlisted,
         cureCost,
         previewRecipient,
+        fullAt,
+        revealWindow,
       };
     },
   });

@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
-import { isAddress, parseEventLogs, type Address } from "viem";
+import { isAddress, parseEventLogs, zeroHash, type Address } from "viem";
 import { useAccount, usePublicClient } from "wagmi";
 import { rotaFactoryAbi } from "../abi";
 import { AmountInput } from "../components/AmountInput";
@@ -13,6 +13,7 @@ import { Button, Card } from "../components/ui";
 import { deployments } from "../config/chain";
 import { useTxFlow } from "../hooks/useTxFlow";
 import { bpsToPercent } from "../lib/format";
+import { generateSeedSecret, seedCommitment, storeSeedSecret } from "../lib/seedCommit";
 
 type Product = "circle" | "bid" | "pot";
 const ZERO = "0x0000000000000000000000000000000000000000" as Address;
@@ -234,6 +235,10 @@ export function CreatePage() {
     if (!pc || circle.contribution === undefined) return;
     setCreating(true);
     try {
+      // RANDOM_ORDER is commit–reveal: commit to a secret now, before any member
+      // joins (so the permutation cannot be aimed), and reveal it at activation.
+      const isRandom = !isBid && circle.randomOrder;
+      const secret = isRandom ? generateSeedSecret() : undefined;
       const params = {
         token: deployments.usdc,
         contributionAmount: circle.contribution,
@@ -249,6 +254,7 @@ export function CreatePage() {
         maxDiscountBps: isBid ? BigInt(Math.round(circle.maxDiscountPct * 100)) : 0n,
         openDeadline: BigInt(Math.floor(Date.now() / 1000)) + BigInt(circle.openDeadlineDays) * DAY,
         inviteOnly: circle.inviteOnly,
+        seedCommit: secret ? seedCommitment(secret) : zeroHash,
         name: circle.name.trim(),
       };
       const hash = await runTx({
@@ -259,7 +265,11 @@ export function CreatePage() {
       });
       if (!hash) return;
       const address = await deployedAddressFromReceipt(hash, "CircleCreated");
-      if (address) setDeployed({ kind: "circle", address, name: params.name });
+      if (!address) return;
+      // Keyed by the real clone address from our own receipt, so a circle created
+      // concurrently by someone else can never claim this secret.
+      if (secret) storeSeedSecret(address, secret);
+      setDeployed({ kind: "circle", address, name: params.name });
     } finally {
       setCreating(false);
     }

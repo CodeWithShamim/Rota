@@ -9,9 +9,16 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { createPublicClient, createWalletClient, http, parseUnits } from "viem";
+import { createPublicClient, createWalletClient, http, keccak256, parseUnits, toHex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { foundry } from "viem/chains";
+
+// RANDOM_ORDER (mode 1) is commit-reveal: the organizer commits keccak256(secret)
+// at creation and reveals `secret` to activate. Seeds use a fixed, published
+// secret — there is nothing to protect on a demo network.
+const SEED_SECRET = keccak256(toHex("rota.seed.secret", { size: 32 }));
+const SEED_COMMIT = keccak256(SEED_SECRET);
+
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const deployments = JSON.parse(
@@ -79,6 +86,7 @@ function circleParams(overrides) {
     maxDiscountBps: 0n,
     openDeadline: now + 30n * 24n * 3600n,
     inviteOnly: false,
+    seedCommit: SEED_COMMIT,
     name: "Circle",
     ...overrides,
   };
@@ -93,7 +101,7 @@ async function createCircle(params) {
     await approve(wallets[i], circle, collateral);
     await tx(wallets[i], { address: circle, abi: circleAbi, functionName: "join" });
   }
-  await tx(wallets[0], { address: circle, abi: circleAbi, functionName: "activate" });
+  await tx(wallets[0], { address: circle, abi: circleAbi, functionName: params.mode === 1 ? "activateWithSeed" : "activate", args: params.mode === 1 ? [SEED_SECRET] : [] });
   return circle;
 }
 

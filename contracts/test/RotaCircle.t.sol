@@ -146,6 +146,113 @@ contract RotaCircleTest is BaseTest {
         }
     }
 
+    /// An unbounded roundDuration overflows `startTime + (r + 1) * roundDuration`,
+    /// which would revert settleRound forever and strand every member's escrow.
+    function test_CreateCircle_RejectsUnboundedDurations() public {
+        vm.startPrank(users[0]);
+        usdc.approve(address(factory), CONTRIBUTION * 10);
+
+        RotaCircle.CircleParams memory p = defaultParams(RotaCircle.Mode.FIXED_ORDER, 4);
+        p.roundDuration = type(uint256).max / 4;
+        vm.expectRevert(RotaCircle.InvalidParams.selector);
+        factory.createCircle(p);
+
+        p = defaultParams(RotaCircle.Mode.FIXED_ORDER, 4);
+        p.roundDuration = 366 days;
+        vm.expectRevert(RotaCircle.InvalidParams.selector);
+        factory.createCircle(p);
+
+        p = defaultParams(RotaCircle.Mode.FIXED_ORDER, 4);
+        p.openDeadline = block.timestamp + 366 days;
+        vm.expectRevert(RotaCircle.InvalidParams.selector);
+        factory.createCircle(p);
+
+        // the bounds themselves must remain usable
+        p = defaultParams(RotaCircle.Mode.FIXED_ORDER, 4);
+        p.roundDuration = 365 days;
+        p.openDeadline = block.timestamp + 365 days;
+        factory.createCircle(p);
+        vm.stopPrank();
+    }
+
+    // ------------------------------------------- RANDOM_ORDER commit–reveal
+
+    function test_Random_RequiresSeedCommitAtCreation() public {
+        RotaCircle.CircleParams memory p = defaultParams(RotaCircle.Mode.RANDOM_ORDER, 4);
+        p.seedCommit = bytes32(0);
+        vm.startPrank(users[0]);
+        usdc.approve(address(factory), CONTRIBUTION);
+        vm.expectRevert(RotaCircle.InvalidParams.selector);
+        factory.createCircle(p);
+        vm.stopPrank();
+    }
+
+    function test_Random_WrongSecretReverts() public {
+        RotaCircle circle = createFullCircle(defaultParams(RotaCircle.Mode.RANDOM_ORDER, 4));
+        vm.expectRevert(RotaCircle.InvalidReveal.selector);
+        circle.activateWithSeed(keccak256("wrong"));
+        assertEq(uint8(circle.phase()), uint8(RotaCircle.Phase.OPEN));
+    }
+
+    /// The no-arg fallback must stay shut while the organizer still has time to
+    /// reveal, otherwise anyone could force join order by front-running them.
+    function test_Random_FallbackClosedDuringRevealWindow() public {
+        RotaCircle circle = createFullCircle(defaultParams(RotaCircle.Mode.RANDOM_ORDER, 4));
+        vm.expectRevert(RotaCircle.RevealWindowOpen.selector);
+        circle.activate();
+
+        vm.warp(block.timestamp + circle.REVEAL_WINDOW() - 1);
+        vm.expectRevert(RotaCircle.RevealWindowOpen.selector);
+        circle.activate();
+    }
+
+    /// An organizer who loses or withholds the secret must never be able to hold
+    /// the circle hostage: after the window anyone activates on join order.
+    function test_Random_FallbackToJoinOrderAfterWindow() public {
+        RotaCircle circle = createFullCircle(defaultParams(RotaCircle.Mode.RANDOM_ORDER, 4));
+        vm.warp(block.timestamp + circle.REVEAL_WINDOW());
+
+        vm.prank(users[7]); // a total stranger may do it
+        circle.activate();
+
+        assertEq(uint8(circle.phase()), uint8(RotaCircle.Phase.ACTIVE));
+        address[] memory order = circle.getPayoutOrder();
+        for (uint256 i; i < 4; ++i) {
+            assertEq(order[i], users[i], "fallback must be join order");
+        }
+    }
+
+    /// The committed secret is the entropy validators cannot see, so two circles
+    /// with identical members and different secrets must permute differently.
+    function test_Random_SecretDrivesThePermutation() public {
+        RotaCircle.CircleParams memory p = defaultParams(RotaCircle.Mode.RANDOM_ORDER, 6);
+        RotaCircle a = createFullCircle(p);
+        a.activateWithSeed(TEST_SEED);
+
+        bytes32 other = keccak256("rota.test.seed.other");
+        p.seedCommit = keccak256(abi.encode(other));
+        RotaCircle b = createFullCircle(p);
+        b.activateWithSeed(other);
+
+        address[] memory orderA = a.getPayoutOrder();
+        address[] memory orderB = b.getPayoutOrder();
+        bool differs = false;
+        for (uint256 i; i < orderA.length; ++i) {
+            if (orderA[i] != orderB[i]) differs = true;
+        }
+        assertTrue(differs, "different secrets must yield different orders");
+    }
+
+    function test_Random_RevealOnlyOnceAndNotOnOtherModes() public {
+        RotaCircle circle = createActiveCircle(defaultParams(RotaCircle.Mode.RANDOM_ORDER, 4));
+        vm.expectRevert(RotaCircle.WrongPhase.selector);
+        circle.activateWithSeed(TEST_SEED);
+
+        RotaCircle fixedCircle = createFullCircle(defaultParams(RotaCircle.Mode.FIXED_ORDER, 4));
+        vm.expectRevert(RotaCircle.WrongPhase.selector);
+        fixedCircle.activateWithSeed(TEST_SEED);
+    }
+
     function test_Join_RevertsAfterActivation() public {
         RotaCircle circle = createActiveCircle(defaultParams(RotaCircle.Mode.FIXED_ORDER, 4));
         vm.startPrank(users[5]);

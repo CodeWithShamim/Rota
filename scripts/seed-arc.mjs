@@ -36,17 +36,15 @@
 import { existsSync, readFileSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import {
-  createPublicClient,
-  createWalletClient,
-  decodeEventLog,
-  defineChain,
-  http,
-  parseEther,
-  parseUnits,
-  formatUnits,
-} from "viem";
+import { createPublicClient, createWalletClient, decodeEventLog, defineChain, formatUnits, http, keccak256, parseEther, parseUnits, toHex } from "viem";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
+
+// RANDOM_ORDER (mode 1) is commit-reveal: the organizer commits keccak256(secret)
+// at creation and reveals `secret` to activate. Seeds use a fixed, published
+// secret — there is nothing to protect on a demo network.
+const SEED_SECRET = keccak256(toHex("rota.seed.secret", { size: 32 }));
+const SEED_COMMIT = keccak256(SEED_SECRET);
+
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -241,6 +239,7 @@ function circleParams(overrides) {
     maxDiscountBps: 0n,
     openDeadline: 0n, // filled at creation time
     inviteOnly: false,
+    seedCommit: SEED_COMMIT,
     name: "Circle",
     ...overrides,
   };
@@ -269,7 +268,7 @@ async function createAndFillCircle(organizer, joiners, params) {
     await tx(w, { address: circle, abi: circleAbi, functionName: "join" }, `join "${params.name}"`);
   }
   await pause();
-  await tx(organizer, { address: circle, abi: circleAbi, functionName: "activate" }, `activate "${params.name}"`);
+  await tx(organizer, { address: circle, abi: circleAbi, functionName: params.mode === 1 ? "activateWithSeed" : "activate", args: params.mode === 1 ? [SEED_SECRET] : [] }, `activate "${params.name}"`);
   return circle;
 }
 

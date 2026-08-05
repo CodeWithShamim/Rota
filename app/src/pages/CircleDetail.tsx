@@ -13,6 +13,7 @@ import { useTxFlow } from "../hooks/useTxFlow";
 import { useUsdcAllowance } from "../hooks/useUsdc";
 import { Mode, Phase, nowSeconds, useCircleActivity, useCircleDetail, useIsRotaContract, type CircleDetail } from "../hooks/useRota";
 import { bpsToPercent, sameAddress, shortAddress } from "../lib/format";
+import { readSeedSecret } from "../lib/seedCommit";
 
 const phaseLabels = ["status.open", "status.active", "status.completed", "status.cancelled"];
 const phaseTones = ["blue", "brand", "stone", "red"] as const;
@@ -54,12 +55,7 @@ function OpenPhasePanel({ c }: { c: CircleDetail }) {
           )}
         </Card>
       )}
-      {full && (
-        <Card>
-          <p className="mb-3 text-sm text-stone-600 dark:text-stone-400">{t("circle.activateHint")}</p>
-          <Button onClick={() => void tx("activate")}>{t("circle.activate")}</Button>
-        </Card>
-      )}
+      {full && <ActivatePanel c={c} />}
       <Card>
         <SectionTitle>{t("create.invite")}</SectionTitle>
         <ShareInvite name={c.name} url={url} />
@@ -73,6 +69,53 @@ function OpenPhasePanel({ c }: { c: CircleDetail }) {
         </Card>
       )}
     </div>
+  );
+}
+
+/**
+ * Activation. FIXED_ORDER and BID activate directly. RANDOM_ORDER is
+ * commit–reveal: whoever holds the secret from creation reveals it here. If the
+ * secret is gone (different device, cleared storage) the circle is not stuck —
+ * after REVEAL_WINDOW anyone may activate on join order instead.
+ */
+function ActivatePanel({ c }: { c: CircleDetail }) {
+  const { t } = useTranslation();
+  const tx = useCircleTx(c.address);
+  const secret = c.mode === Mode.RANDOM ? readSeedSecret(c.address) : undefined;
+
+  if (c.mode !== Mode.RANDOM) {
+    return (
+      <Card>
+        <p className="mb-3 text-sm text-stone-600 dark:text-stone-400">{t("circle.activateHint")}</p>
+        <Button onClick={() => void tx("activate")}>{t("circle.activate")}</Button>
+      </Card>
+    );
+  }
+
+  if (secret) {
+    return (
+      <Card>
+        <p className="mb-3 text-sm text-stone-600 dark:text-stone-400">{t("circle.activateRevealHint")}</p>
+        <Button onClick={() => void tx("activateWithSeed", [secret])}>{t("circle.activate")}</Button>
+      </Card>
+    );
+  }
+
+  const fallbackAt = c.fullAt + c.revealWindow;
+  const fallbackOpen = nowSeconds() >= fallbackAt;
+  return (
+    <Card>
+      <p className="mb-3 text-sm text-amber-700 dark:text-amber-300">{t("circle.activateNoSecret")}</p>
+      {fallbackOpen ? (
+        <Button variant="secondary" onClick={() => void tx("activate")}>
+          {t("circle.activateFallback")}
+        </Button>
+      ) : (
+        <p className="text-xs text-stone-500 dark:text-stone-400">
+          {t("circle.activateFallbackIn", { when: "" })} <Countdown target={fallbackAt} />
+        </p>
+      )}
+    </Card>
   );
 }
 

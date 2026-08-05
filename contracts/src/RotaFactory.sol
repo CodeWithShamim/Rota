@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.24;
+pragma solidity 0.8.30;
 
 import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -54,12 +54,17 @@ contract RotaFactory {
     /// @return circle The deployed clone address.
     function createCircle(RotaCircle.CircleParams calldata p) external returns (address circle) {
         circle = Clones.clone(circleImplementation);
-        RotaCircle(circle).initialize(p, msg.sender, address(registry));
-        registry.authorize(circle);
 
+        // Checks-effects-interactions: the clone address is known the moment it is
+        // deployed, so record and announce it BEFORE any external call. Nothing
+        // here is observable to a reentrant caller mid-flight, and a revert in
+        // initialize() unwinds the whole transaction anyway.
         circles.push(circle);
         isRotaContract[circle] = true;
         emit CircleCreated(circle, msg.sender, p);
+
+        RotaCircle(circle).initialize(p, msg.sender, address(registry));
+        registry.authorize(circle);
 
         uint256 collateral = (p.contributionAmount * p.collateralBps) / 10_000;
         if (collateral > 0) IERC20(p.token).safeTransferFrom(msg.sender, circle, collateral);
@@ -71,12 +76,14 @@ contract RotaFactory {
     /// @return pot The deployed clone address.
     function createGoalPot(GoalPot.PotParams calldata p) external returns (address pot) {
         pot = Clones.clone(goalPotImplementation);
-        GoalPot(pot).initialize(p, msg.sender, address(registry));
-        registry.authorize(pot);
 
+        // Checks-effects-interactions — see createCircle.
         goalPots.push(pot);
         isRotaContract[pot] = true;
         emit GoalPotCreated(pot, msg.sender, p);
+
+        GoalPot(pot).initialize(p, msg.sender, address(registry));
+        registry.authorize(pot);
     }
 
     // ---------------------------------------------------------------- views

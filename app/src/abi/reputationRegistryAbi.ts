@@ -7,6 +7,13 @@ export const reputationRegistryAbi = [
   },
   {
     "type": "function",
+    "name": "acceptOwnership",
+    "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "authorize",
     "inputs": [
       {
@@ -104,6 +111,19 @@ export const reputationRegistryAbi = [
   {
     "type": "function",
     "name": "owner",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "pendingOwner",
     "inputs": [],
     "outputs": [
       {
@@ -313,6 +333,25 @@ export const reputationRegistryAbi = [
     "inputs": [
       {
         "name": "factory",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "OwnershipTransferStarted",
+    "inputs": [
+      {
+        "name": "previousOwner",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "newOwner",
         "type": "address",
         "indexed": true,
         "internalType": "address"

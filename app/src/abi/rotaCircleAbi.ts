@@ -72,7 +72,59 @@ export const rotaCircleAbi = [
   },
   {
     "type": "function",
+    "name": "MAX_OPEN_WINDOW",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "MAX_ROUND_DURATION",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "MIN_MEMBERS",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "PAYOUT_GAS",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "REVEAL_WINDOW",
     "inputs": [],
     "outputs": [
       {
@@ -87,6 +139,19 @@ export const rotaCircleAbi = [
     "type": "function",
     "name": "activate",
     "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "activateWithSeed",
+    "inputs": [
+      {
+        "name": "secret",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
     "outputs": [],
     "stateMutability": "nonpayable"
   },
@@ -334,6 +399,32 @@ export const rotaCircleAbi = [
   },
   {
     "type": "function",
+    "name": "fullAt",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "fullBlock",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "getMembers",
     "inputs": [],
     "outputs": [
@@ -514,6 +605,11 @@ export const rotaCircleAbi = [
             "name": "inviteOnly",
             "type": "bool",
             "internalType": "bool"
+          },
+          {
+            "name": "seedCommit",
+            "type": "bytes32",
+            "internalType": "bytes32"
           },
           {
             "name": "name",
@@ -849,6 +945,19 @@ export const rotaCircleAbi = [
   },
   {
     "type": "function",
+    "name": "seedCommit",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "setAllowlist",
     "inputs": [
       {
@@ -1077,6 +1186,25 @@ export const rotaCircleAbi = [
   },
   {
     "type": "event",
+    "name": "CircleFilled",
+    "inputs": [
+      {
+        "name": "fullAt",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "fullBlock",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "CollateralWithdrawn",
     "inputs": [
       {
@@ -1301,6 +1429,25 @@ export const rotaCircleAbi = [
     "anonymous": false
   },
   {
+    "type": "event",
+    "name": "SeedRevealTimedOut",
+    "inputs": [],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "SeedRevealed",
+    "inputs": [
+      {
+        "name": "commitment",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      }
+    ],
+    "anonymous": false
+  },
+  {
     "type": "error",
     "name": "AlreadyContributed",
     "inputs": []
@@ -1338,6 +1485,11 @@ export const rotaCircleAbi = [
   {
     "type": "error",
     "name": "InvalidParams",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidReveal",
     "inputs": []
   },
   {
@@ -1388,6 +1540,11 @@ export const rotaCircleAbi = [
   {
     "type": "error",
     "name": "ReentrancyGuardReentrantCall",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "RevealWindowOpen",
     "inputs": []
   },
   {

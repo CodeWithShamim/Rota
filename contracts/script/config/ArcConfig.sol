@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.24;
+pragma solidity 0.8.30;
 
 /// @dev Chain-specific constants for Arc, sourced from docs/ARC_NOTES.md.
 ///      This is the ONLY place chain values live on the contracts side.

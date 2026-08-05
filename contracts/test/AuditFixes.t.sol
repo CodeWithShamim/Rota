@@ -6,6 +6,7 @@ import {RotaCircle} from "../src/RotaCircle.sol";
 import {GoalPot} from "../src/GoalPot.sol";
 import {ReputationRegistry} from "../src/ReputationRegistry.sol";
 import {BlacklistToken} from "./mocks/BlacklistToken.sol";
+import {GriefingToken} from "./mocks/GriefingToken.sol";
 
 /// @dev Regression tests for the 2026-07 audit fixes:
 ///      1. blacklisted payout/giving addresses must not block settleRound
@@ -46,6 +47,68 @@ contract AuditFixesTest is BaseTest {
             circle.contribute();
             vm.stopPrank();
         }
+    }
+
+    // --------------------------------------- 0. payout griefing (gas / bomb)
+
+    /// Build an active, fully-contributed 3-member circle over `token`.
+    function griefCircle(GriefingToken token) internal returns (RotaCircle circle) {
+        RotaCircle.CircleParams memory p = defaultParams(RotaCircle.Mode.FIXED_ORDER, 3);
+        p.token = address(token);
+        vm.startPrank(users[0]);
+        token.approve(address(factory), CONTRIBUTION);
+        circle = RotaCircle(factory.createCircle(p));
+        vm.stopPrank();
+        for (uint256 i = 1; i < 3; ++i) {
+            vm.startPrank(users[i]);
+            token.approve(address(circle), type(uint256).max);
+            circle.join();
+            vm.stopPrank();
+        }
+        circle.activate();
+        for (uint256 i; i < 3; ++i) {
+            vm.startPrank(users[i]);
+            token.approve(address(circle), type(uint256).max);
+            circle.contribute();
+            vm.stopPrank();
+        }
+    }
+
+    /// Settling must stay affordable in a real block. These assert on GAS, not
+    /// just success: under Forge's unmetered gas a griefing token still "works",
+    /// so only the cost exposes the attack. Uncapped, the gas-burn variant costs
+    /// >1e9 gas — unminable at any real block limit, i.e. settlement bricked
+    /// forever. A hardened settle costs ~2.25M; the budget sits just above that so
+    /// the return-bomb variant (~4.2M uncapped, from copying ~1MB) also trips it.
+    uint256 internal constant SETTLE_GAS_BUDGET = 3_000_000;
+
+    function griefedSettleGas(GriefingToken.Mode griefMode) internal returns (uint256 used) {
+        GriefingToken token = new GriefingToken();
+        for (uint256 i; i < 5; ++i) {
+            token.mint(users[i], 1_000_000e6);
+        }
+        RotaCircle circle = griefCircle(token);
+        token.setGrief(users[0], griefMode);
+
+        uint256 before = gasleft();
+        circle.settleRound();
+        used = before - gasleft();
+
+        assertEq(circle.currentRound(), 1, "round must still advance");
+        assertEq(circle.dividendBalance(users[0]), 3 * CONTRIBUTION, "payout must defer");
+    }
+
+    /// A token that burns every wei of forwarded gas must not brick settlement.
+    function test_Settle_GasBurningToken_StaysWithinBlockBudget() public {
+        uint256 used = griefedSettleGas(GriefingToken.Mode.GAS_BURN);
+        assertLt(used, SETTLE_GAS_BUDGET, "gas-burning token made settleRound unminable");
+    }
+
+    /// Same for a token returning a multi-megabyte blob: the bounded
+    /// returndatacopy means the caller never pays for the memory expansion.
+    function test_Settle_ReturnBombToken_StaysWithinBlockBudget() public {
+        uint256 used = griefedSettleGas(GriefingToken.Mode.RETURN_BOMB);
+        assertLt(used, SETTLE_GAS_BUDGET, "return bomb inflated settleRound's cost");
     }
 
     // ------------------------------------------------- 1. circle payout DoS

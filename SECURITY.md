@@ -5,14 +5,34 @@ honestly lists the known limitations and design trade-offs.
 
 ## Smart-contract limitations
 
-### 1. Pseudo-randomness is validator-manipulable
-`RANDOM_ORDER` derives the payout permutation from
-`keccak256(blockhash(block.number-1), address(this), members)` at activation.
-A block producer could grind blockhashes to bias the order. Note that on Arc,
-`block.prevrandao` **always returns 0** (see docs/ARC_NOTES.md), so blockhash is the
-only in-protocol entropy available. Impact is bounded — the order only changes *when*
-a member is paid, never *whether* — but for adversarial settings this needs Chainlink
-VRF or similar (future work).
+### 1. RANDOM_ORDER uses commit–reveal, not a VRF
+`RANDOM_ORDER` derives its permutation from
+`keccak256(secret, blockhash(fullBlock), address(this), members)`, where `secret`
+is committed by the organizer at creation (`seedCommit = keccak256(secret)`) and
+revealed via `activateWithSeed()`. This splits control so neither side can steer it:
+
+- The organizer fixes `secret` **before any member joins**, so they cannot aim it at
+  a particular ordering.
+- `blockhash(fullBlock)` is fixed when the last member joins and is unknown at commit
+  time. A validator can grind it, but without `secret` they cannot compute the
+  permutation it produces — the grinding is blind.
+
+On Arc, `block.prevrandao` **always returns 0** (see docs/ARC_NOTES.md), so there is
+no in-protocol randomness beyond blockhash, and no VRF is available.
+
+**Residual risk.** At reveal time the organizer can compute the resulting order and
+choose to withhold, letting the circle fall back to join order after `REVEAL_WINDOW`
+(1 day). That is a one-bit choice between two orders, *neither of which they picked* —
+inherent to any reveal scheme without a VRF. A real VRF would remove it.
+
+**Liveness.** An organizer who loses or withholds the secret cannot hold the circle
+hostage: once `REVEAL_WINDOW` has elapsed after the circle fills, anyone may call
+`activate()` and the circle starts in join order.
+
+**Operational caveat.** The secret must survive between two transactions, and the web
+app keeps it in `localStorage` keyed by the circle address. Clearing site data, or
+activating from a different browser or device, loses it — the circle still starts, but
+in join order rather than shuffled.
 
 ### 2. Collateral can under-cover defaults
 Collateral is `collateralBps` of **one** contribution. A member who defaults in more
