@@ -192,6 +192,8 @@
     "inviteMessage": "Únete a mi círculo de ahorro Rota \"{{name}}\": {{url}}"
   },
   "circle": {
+    "untrustedTitle": "Contrato no reconocido",
+    "untrustedBody": "Esta dirección no fue creada por Rota. No apruebes tokens ni envíes fondos a ella: podría ser un enlace falso. Abre círculos y botes solo desde el panel de Rota.",
     "yourPosition": "Tu posición de pago",
     "position": "Posición {{n}}",
     "positionUnknown": "Se decide por subasta en cada ronda",

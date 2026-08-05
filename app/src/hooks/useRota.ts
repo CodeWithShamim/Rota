@@ -229,6 +229,31 @@ export function usePotsOverview() {
   });
 }
 
+// ---------------------------------------------------------- provenance guard
+
+/**
+ * Whether `address` is a circle/pot actually deployed by the trusted RotaFactory.
+ * Detail pages take the target address straight from the URL, so before rendering
+ * any action (join/contribute/approve) we confirm the factory minted it — otherwise
+ * a crafted link to an attacker contract could impersonate a circle and phish USDC
+ * approvals. Returns undefined while loading, true/false once resolved.
+ */
+export function useIsRotaContract(address: Address | undefined) {
+  const pc = usePublicClient();
+  return useQuery({
+    queryKey: ["isRotaContract", address],
+    enabled: !!pc && !!address && deployments.factory !== ZERO,
+    staleTime: Infinity,
+    queryFn: async () =>
+      (await pc!.readContract({
+        address: deployments.factory,
+        abi: rotaFactoryAbi,
+        functionName: "isRotaContract",
+        args: [address!],
+      })) as boolean,
+  });
+}
+
 // ------------------------------------------------------------------- detail
 
 export interface ActivityItem {

@@ -192,6 +192,8 @@
     "inviteMessage": "Join my Rota savings circle \"{{name}}\": {{url}}"
   },
   "circle": {
+    "untrustedTitle": "Unrecognized contract",
+    "untrustedBody": "This address was not created by Rota. Don't approve tokens or send funds to it — you may be looking at a fake link. Only open circles and pots from the Rota dashboard.",
     "yourPosition": "Your payout position",
     "position": "Position {{n}}",
     "positionUnknown": "Decided by bidding each round",

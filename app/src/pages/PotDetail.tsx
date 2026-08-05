@@ -9,9 +9,9 @@ import { AmountInput } from "../components/AmountInput";
 import { ApproveThen } from "../components/ApproveThen";
 import { Money, moneyText } from "../components/Money";
 import { ShareInvite } from "../components/ShareInvite";
-import { Badge, Button, Card, Countdown, ProgressRing, SectionTitle, Skeleton } from "../components/ui";
+import { Badge, Button, Card, Countdown, EmptyState, ProgressRing, SectionTitle, Skeleton } from "../components/ui";
 import { useTxFlow } from "../hooks/useTxFlow";
-import { PotPhase, usePotActivity, usePotDetail } from "../hooks/useRota";
+import { PotPhase, useIsRotaContract, usePotActivity, usePotDetail } from "../hooks/useRota";
 import { bpsToPercent, formatDate, shortAddress } from "../lib/format";
 
 export function PotDetailPage() {
@@ -19,13 +19,20 @@ export function PotDetailPage() {
   const params = useParams();
   const address = params.address && isAddress(params.address) ? (params.address as Address) : undefined;
   const { address: user } = useAccount();
+  const { data: isRota, isLoading: verifying } = useIsRotaContract(address);
   const { data: p, isLoading } = usePotDetail(address);
   const { data: activity, isLoading: activityLoading } = usePotActivity(address);
   const runTx = useTxFlow();
   const [depositAmount, setDepositAmount] = useState<bigint | undefined>(undefined);
   const [confirmExit, setConfirmExit] = useState(false);
 
-  if (isLoading || !p) {
+  // Provenance gate: never render deposit/approve actions against a contract the
+  // factory did not deploy (the address is attacker-controllable via the URL).
+  if (isRota === false) {
+    return <EmptyState title={t("circle.untrustedTitle")} hint={t("circle.untrustedBody")} />;
+  }
+
+  if (verifying || isLoading || !p) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-24" />

@@ -31,6 +31,20 @@ export interface NewsItem {
   relevance: number; // 1-10
 }
 
+/**
+ * Whether `url` is safe to place in an href. The news feed is LLM-produced, so a
+ * hostile/hallucinated `javascript:` or `data:` URL must never become a clickable
+ * link — only allow absolute http(s) URLs.
+ */
+function isSafeHttpUrl(url: string): boolean {
+  try {
+    const protocol = new URL(url).protocol;
+    return protocol === "http:" || protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 /** Parse the contract's JSON payload defensively — it is LLM-produced. */
 export function parseNewsJson(raw: unknown): NewsItem[] {
   if (typeof raw !== "string") return [];
@@ -46,6 +60,7 @@ export function parseNewsJson(raw: unknown): NewsItem[] {
     if (typeof it !== "object" || it === null) continue;
     const o = it as Record<string, unknown>;
     if (typeof o.title !== "string" || typeof o.url !== "string") continue;
+    if (!isSafeHttpUrl(o.url)) continue;
     if (o.category !== "arc" && o.category !== "rota") continue;
     items.push({
       title: o.title,

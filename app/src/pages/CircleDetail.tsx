@@ -8,10 +8,10 @@ import { ActivityFeed } from "../components/ActivityFeed";
 import { ApproveThen } from "../components/ApproveThen";
 import { Money, moneyText } from "../components/Money";
 import { ShareInvite } from "../components/ShareInvite";
-import { Badge, Button, Card, Countdown, ProgressBar, SectionTitle, Skeleton } from "../components/ui";
+import { Badge, Button, Card, Countdown, EmptyState, ProgressBar, SectionTitle, Skeleton } from "../components/ui";
 import { useTxFlow } from "../hooks/useTxFlow";
 import { useUsdcAllowance } from "../hooks/useUsdc";
-import { Mode, Phase, nowSeconds, useCircleActivity, useCircleDetail, type CircleDetail } from "../hooks/useRota";
+import { Mode, Phase, nowSeconds, useCircleActivity, useCircleDetail, useIsRotaContract, type CircleDetail } from "../hooks/useRota";
 import { bpsToPercent, shortAddress } from "../lib/format";
 
 const phaseLabels = ["status.open", "status.active", "status.completed", "status.cancelled"];
@@ -335,10 +335,17 @@ export function CircleDetailPage() {
   const params = useParams();
   const address = params.address && isAddress(params.address) ? (params.address as Address) : undefined;
   const { address: user } = useAccount();
+  const { data: isRota, isLoading: verifying } = useIsRotaContract(address);
   const { data: c, isLoading } = useCircleDetail(address);
   const { data: activity, isLoading: activityLoading } = useCircleActivity(address);
 
-  if (isLoading || !c) {
+  // Provenance gate: the address comes from the URL, so never render actions
+  // (join/contribute/approve) against a contract the factory did not deploy.
+  if (isRota === false) {
+    return <EmptyState title={t("circle.untrustedTitle")} hint={t("circle.untrustedBody")} />;
+  }
+
+  if (verifying || isLoading || !c) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-24" />

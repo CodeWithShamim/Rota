@@ -192,6 +192,8 @@
     "inviteMessage": "Sumali sa aking Rota na paluwagan na \"{{name}}\": {{url}}"
   },
   "circle": {
+    "untrustedTitle": "Hindi kilalang kontrata",
+    "untrustedBody": "Hindi ginawa ng Rota ang address na ito. Huwag mag-approve ng token o magpadala ng pondo dito — maaaring pekeng link ito. Buksan lang ang mga circle at pot mula sa Rota dashboard.",
     "yourPosition": "Ang iyong posisyon sa payout",
     "position": "Posisyon {{n}}",
     "positionUnknown": "Pinagpapasyahan sa bidding bawat round",
