@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.30;
+pragma solidity 0.8.36;
 
 /// @title IReputationRegistry
 /// @notice Write/read interface for Rota's on-chain reputation ledger.

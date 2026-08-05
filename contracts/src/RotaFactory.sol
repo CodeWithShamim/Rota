@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.30;
+pragma solidity 0.8.36;
 
 import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -13,16 +13,24 @@ import {ReputationRegistry} from "./ReputationRegistry.sol";
 ///         index of deployed addresses; rich data (params, membership, activity)
 ///         lives in events and in the clones themselves. Also authorizes each clone
 ///         as a writer on the ReputationRegistry.
+/// @dev    Holds no funds and has no owner: it only deploys clones, indexes them,
+///         and forwards the organizer's collateral straight to the new circle.
+/// @author Rota (https://github.com/codewithshamim/rota)
 contract RotaFactory {
     using SafeERC20 for IERC20;
 
     // ---------------------------------------------------------------- state
 
+    /// @notice RotaCircle logic contract every circle clone delegates to.
     address public immutable circleImplementation;
+    /// @notice GoalPot logic contract every pot clone delegates to.
     address public immutable goalPotImplementation;
+    /// @notice Shared ReputationRegistry each deployed clone is authorized to write to.
     ReputationRegistry public immutable registry;
 
+    /// @notice Every circle deployed by this factory, in creation order.
     address[] public circles;
+    /// @notice Every goal pot deployed by this factory, in creation order.
     address[] public goalPots;
     mapping(address => bool) public isRotaContract;
 
@@ -35,6 +43,8 @@ contract RotaFactory {
 
     error ZeroAddress();
 
+    /// @notice Deploy the factory over fixed implementations and registry.
+    /// @dev All three addresses are immutable; deploy a new factory to change them.
     constructor(address circleImplementation_, address goalPotImplementation_, address registry_) {
         if (circleImplementation_ == address(0) || goalPotImplementation_ == address(0) || registry_ == address(0)) {
             revert ZeroAddress();
@@ -52,6 +62,7 @@ contract RotaFactory {
     ///         `contributionAmount * collateralBps / 10000` before calling).
     /// @param p Circle configuration (see RotaCircle.CircleParams).
     /// @return circle The deployed clone address.
+    /// @dev Reverts unless the caller has approved this factory for the collateral.
     function createCircle(RotaCircle.CircleParams calldata p) external returns (address circle) {
         circle = Clones.clone(circleImplementation);
 
@@ -74,6 +85,7 @@ contract RotaFactory {
     ///         made directly to the pot afterwards — approve the pot, not the factory).
     /// @param p Pot configuration (see GoalPot.PotParams).
     /// @return pot The deployed clone address.
+    /// @dev Takes no funds: deposits go straight to the pot afterwards.
     function createGoalPot(GoalPot.PotParams calldata p) external returns (address pot) {
         pot = Clones.clone(goalPotImplementation);
 
@@ -88,18 +100,26 @@ contract RotaFactory {
 
     // ---------------------------------------------------------------- views
 
+    /// @notice Every circle this factory has deployed.
+    /// @dev Grows without bound; prefer the CircleCreated event for indexing.
     function getCircles() external view returns (address[] memory) {
         return circles;
     }
 
+    /// @notice Every goal pot this factory has deployed.
+    /// @dev Grows without bound; prefer the GoalPotCreated event for indexing.
     function getGoalPots() external view returns (address[] memory) {
         return goalPots;
     }
 
+    /// @notice How many circles this factory has deployed.
+    /// @dev Cheaper than getCircles() when only the count is needed.
     function circleCount() external view returns (uint256) {
         return circles.length;
     }
 
+    /// @notice How many goal pots this factory has deployed.
+    /// @dev Cheaper than getGoalPots() when only the count is needed.
     function goalPotCount() external view returns (uint256) {
         return goalPots.length;
     }

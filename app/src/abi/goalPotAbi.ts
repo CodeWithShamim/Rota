@@ -20,6 +20,19 @@ export const goalPotAbi = [
   },
   {
     "type": "function",
+    "name": "MAX_ALLOWLIST_BATCH",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "MAX_DURATION",
     "inputs": [],
     "outputs": [
@@ -75,14 +88,14 @@ export const goalPotAbi = [
     "name": "allowlist",
     "inputs": [
       {
-        "name": "",
+        "name": "account",
         "type": "address",
         "internalType": "address"
       }
     ],
     "outputs": [
       {
-        "name": "",
+        "name": "allowed",
         "type": "bool",
         "internalType": "bool"
       }
@@ -120,14 +133,14 @@ export const goalPotAbi = [
     "name": "deposited",
     "inputs": [
       {
-        "name": "",
+        "name": "member",
         "type": "address",
         "internalType": "address"
       }
     ],
     "outputs": [
       {
-        "name": "",
+        "name": "principal",
         "type": "uint256",
         "internalType": "uint256"
       }
@@ -306,14 +319,14 @@ export const goalPotAbi = [
     "name": "isMember",
     "inputs": [
       {
-        "name": "",
+        "name": "account",
         "type": "address",
         "internalType": "address"
       }
     ],
     "outputs": [
       {
-        "name": "",
+        "name": "joined",
         "type": "bool",
         "internalType": "bool"
       }
@@ -655,7 +668,7 @@ export const goalPotAbi = [
       {
         "name": "amount",
         "type": "uint256",
-        "indexed": false,
+        "indexed": true,
         "internalType": "uint256"
       }
     ],
@@ -682,12 +695,25 @@ export const goalPotAbi = [
   },
   {
     "type": "event",
+    "name": "Initialized",
+    "inputs": [
+      {
+        "name": "version",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "Unlocked",
     "inputs": [
       {
         "name": "totalDeposited",
         "type": "uint256",
-        "indexed": false,
+        "indexed": true,
         "internalType": "uint256"
       },
       {
@@ -732,11 +758,6 @@ export const goalPotAbi = [
   },
   {
     "type": "error",
-    "name": "AlreadyInitialized",
-    "inputs": []
-  },
-  {
-    "type": "error",
     "name": "BelowMinContribution",
     "inputs": []
   },
@@ -747,7 +768,17 @@ export const goalPotAbi = [
   },
   {
     "type": "error",
+    "name": "InvalidInitialization",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "InvalidParams",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NotInitializing",
     "inputs": []
   },
   {

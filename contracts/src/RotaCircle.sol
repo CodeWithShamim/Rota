@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.30;
+pragma solidity 0.8.36;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {IReputationRegistry} from "./interfaces/IReputationRegistry.sol";
 
 /// @title RotaCircle — rotating savings & credit circle (ROSCA / chit fund)
@@ -21,7 +23,8 @@ import {IReputationRegistry} from "./interfaces/IReputationRegistry.sol";
 ///         ever leave via pull-pattern withdrawals or the settle payout; state changes
 ///         always precede transfers (checks-effects-interactions) and fund-moving
 ///         entry points are nonReentrant.
-contract RotaCircle is ReentrancyGuard {
+/// @author Rota (https://github.com/codewithshamim/rota)
+contract RotaCircle is Initializable, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     // ---------------------------------------------------------------- types
@@ -84,31 +87,54 @@ contract RotaCircle is ReentrancyGuard {
     /// @notice Upper bound on how far ahead `openDeadline` may sit, so a circle that
     ///         never fills always becomes cancellable within a bounded time.
     uint256 public constant MAX_OPEN_WINDOW = 365 days;
+    /// @notice Max addresses per {setAllowlist} call, so a caller-supplied array can
+    ///         never push the transaction past the block gas limit.
+    uint256 public constant MAX_ALLOWLIST_BATCH = 100;
 
     // ---------------------------------------------------------------- state
 
+    /// @notice The RotaFactory that deployed this clone.
     address public factory;
+    /// @notice The ERC-20 all contributions, collateral and payouts are denominated in (USDC).
     IERC20 public token;
+    /// @notice Registry this circle reports contributions, defaults and completions to.
     IReputationRegistry public reputationRegistry;
+    /// @notice Circle creator; auto-joined as member #0 and controls the allowlist.
     address public organizer;
+    /// @notice Human-readable circle name chosen at creation.
     string public name;
 
+    /// @notice Payout selection strategy: FIXED_ORDER, RANDOM_ORDER or BID.
     Mode public mode;
+    /// @notice Lifecycle stage: OPEN, ACTIVE, COMPLETED or CANCELLED.
     Phase public phase;
+    /// @notice Amount each member owes per round, in token units.
     uint256 public contributionAmount;
+    /// @notice Target member count; also the total number of rounds.
     uint256 public memberCap;
+    /// @notice Length of one round in seconds.
     uint256 public roundDuration;
+    /// @notice Collateral escrowed on join, in bps of one contribution.
     uint256 public collateralBps;
+    /// @notice Share of each pot routed to `givingRecipient`, in bps (max 500).
     uint256 public givingBps;
+    /// @notice Address receiving the giving cut; zero when giving is disabled.
     address public givingRecipient;
+    /// @notice BID mode: share of each round that accepts bids, in bps.
     uint256 public bidWindowBps;
+    /// @notice BID mode: largest discount a bid may offer, in bps (max 3000).
     uint256 public maxDiscountBps;
+    /// @notice Timestamp after which an unfilled circle may be cancelled by anyone.
     uint256 public openDeadline;
+    /// @notice Whether joining requires being on the organizer's allowlist.
     bool public inviteOnly;
 
+    /// @notice Members in join order; member #0 is the organizer.
     address[] public members;
-    mapping(address => bool) public isMember;
-    mapping(address => bool) public allowlist;
+    /// @notice Whether an address has joined this circle.
+    mapping(address account => bool joined) public isMember;
+    /// @notice Whether an address may join an invite-only circle.
+    mapping(address account => bool allowed) public allowlist;
 
     uint256 public startTime; // set at activation
     uint256 public currentRound; // 0-indexed; == memberCap when completed
@@ -122,29 +148,34 @@ contract RotaCircle is ReentrancyGuard {
     /// @notice Block the circle filled; supplies the validator-side half of the seed.
     uint256 public fullBlock;
 
-    mapping(uint256 => mapping(address => bool)) public hasContributed;
-    mapping(uint256 => uint256) public roundContributionCount;
-    mapping(uint256 => BestBid) public bestBid;
-    mapping(address => bool) public hasWon;
-    mapping(address => bool) public autoPayOptIn;
-    mapping(address => uint256) public dividendBalance;
-    mapping(address => uint256) public collateralBalance;
+    /// @notice Whether a member has paid their contribution for a given round.
+    mapping(uint256 round => mapping(address member => bool paid)) public hasContributed;
+    /// @notice How many members have contributed in a given round.
+    mapping(uint256 round => uint256 paidCount) public roundContributionCount;
+    /// @notice Highest discount bid recorded for a given round (BID mode).
+    mapping(uint256 round => BestBid bid) public bestBid;
+    /// @notice Whether a member has already received a pot.
+    mapping(address member => bool won) public hasWon;
+    /// @notice Whether a member allows anyone to pull their contribution each round.
+    mapping(address member => bool optedIn) public autoPayOptIn;
+    /// @notice Withdrawable balance: bid dividends plus any deferred payout.
+    mapping(address payee => uint256 amount) public dividendBalance;
+    /// @notice Collateral still escrowed for a member, net of slashing.
+    mapping(address member => uint256 amount) public collateralBalance;
 
-    mapping(address => bool) public inDefault;
+    /// @notice Whether a member has missed a round and not yet cured.
+    mapping(address member => bool defaulted) public inDefault;
     /// @notice Collateral slashed from a member to cover their missed rounds;
     ///         repaid on cure, restoring collateralBalance.
-    mapping(address => uint256) public slashedAmount;
+    mapping(address member => uint256 amount) public slashedAmount;
     /// @notice Missed contribution value NOT covered by collateral; repaid on cure
     ///         into penaltyCarry (next pot).
-    mapping(address => uint256) public shortfallAmount;
+    mapping(address member => uint256 amount) public shortfallAmount;
     /// @notice Cure penalties/shortfalls (and rounding dust) rolled into the next pot.
     uint256 public penaltyCarry;
 
-    bool private _initialized;
-
     // --------------------------------------------------------------- errors
 
-    error AlreadyInitialized();
     error InvalidParams();
     error WrongPhase();
     error NotMember();
@@ -170,7 +201,7 @@ contract RotaCircle is ReentrancyGuard {
     // --------------------------------------------------------------- events
 
     event MemberJoined(address indexed member, uint256 collateral, uint256 memberCount);
-    event CircleActivated(uint256 startTime, address[] payoutOrder);
+    event CircleActivated(uint256 indexed startTime, address[] payoutOrder);
     event Contributed(address indexed member, uint256 indexed round, uint256 amount);
     event AutoPaid(address indexed member, uint256 indexed round, address indexed caller, uint256 amount);
     event AutoPayChanged(address indexed member, bool optedIn);
@@ -187,16 +218,18 @@ contract RotaCircle is ReentrancyGuard {
     event CircleCancelled();
     event AllowlistUpdated(address indexed account, bool allowed);
     event PayoutDeferred(address indexed to, uint256 amount);
-    event CircleFilled(uint256 fullAt, uint256 fullBlock);
+    event CircleFilled(uint256 indexed fullAt, uint256 fullBlock);
     event SeedRevealed(bytes32 indexed commitment);
     event SeedRevealTimedOut();
 
     // ---------------------------------------------------------- initializer
 
-    /// @dev Lock the implementation contract. Clones get fresh storage
-    ///      (_initialized = false) and are initialized by the factory as usual.
+    /// @notice Deploy the RotaCircle logic contract.
+    /// @dev Lock the implementation contract so it can never be initialized
+    ///      directly. Clones get fresh storage and are initialized by the factory
+    ///      in the same transaction that deploys them.
     constructor() {
-        _initialized = true;
+        _disableInitializers();
     }
 
     /// @notice Initialize a freshly deployed clone. Called once by the factory.
@@ -207,10 +240,14 @@ contract RotaCircle is ReentrancyGuard {
     /// @param p Circle configuration.
     /// @param organizer_ The circle creator (auto-joined as first member).
     /// @param registry_ ReputationRegistry address.
-    function initialize(CircleParams calldata p, address organizer_, address registry_) external {
-        if (_initialized) revert AlreadyInitialized();
-        _initialized = true;
-
+    /// @dev The `initializer` modifier is the access control here: the factory calls
+    ///      this in the same transaction as {Clones.clone}, and the guard makes any
+    ///      later call — by anyone — revert with `InvalidInitialization()`. There is
+    ///      no window in which an uninitialized clone is reachable.
+    function initialize(CircleParams calldata p, address organizer_, address registry_)
+        external
+        initializer
+    {
         if (
             p.token == address(0) || organizer_ == address(0) || registry_ == address(0) || p.contributionAmount == 0
                 || p.memberCap < MIN_MEMBERS || p.memberCap > MAX_MEMBERS || p.roundDuration == 0
@@ -282,10 +319,14 @@ contract RotaCircle is ReentrancyGuard {
     /// @notice Add/remove invitees while the circle is open (organizer only).
     /// @param accounts Addresses to update.
     /// @param allowed Whether they may join.
+    /// @dev Only meaningful while inviteOnly is set; harmless otherwise.
     function setAllowlist(address[] calldata accounts, bool allowed) external {
         if (msg.sender != organizer) revert NotOrganizer();
         if (phase != Phase.OPEN) revert WrongPhase();
         uint256 len = accounts.length;
+        // caller-supplied array: bound it so one call cannot exceed the block gas
+        // limit (a circle only ever needs memberCap invitees anyway)
+        if (len == 0 || len > MAX_ALLOWLIST_BATCH) revert InvalidParams();
         for (uint256 i; i < len; ++i) {
             allowlist[accounts[i]] = allowed;
             emit AllowlistUpdated(accounts[i], allowed);
@@ -332,6 +373,7 @@ contract RotaCircle is ReentrancyGuard {
         _activate(secret, true);
     }
 
+    /// @notice Shared activation body for both activation paths.
     /// @dev Shared activation. `shuffle` is only ever true on the reveal path.
     function _activate(bytes32 secret, bool shuffle) internal {
         phase = Phase.ACTIVE;
@@ -358,6 +400,7 @@ contract RotaCircle is ReentrancyGuard {
     /// @notice Cancel an unfilled circle. Organizer may cancel any time before
     ///         activation; anyone may cancel after `openDeadline`. Members reclaim
     ///         collateral via {withdrawCollateral}.
+    /// @dev Terminal: members reclaim collateral via withdrawCollateral().
     function cancel() external {
         if (phase != Phase.OPEN) revert WrongPhase();
         if (msg.sender != organizer && block.timestamp <= openDeadline) revert OpenDeadlineNotReached();
@@ -368,6 +411,7 @@ contract RotaCircle is ReentrancyGuard {
     // --------------------------------------------------------- active phase
 
     /// @notice Contribute this round's amount. Requires prior approval.
+    /// @dev Reverts once the round's deadline has passed.
     function contribute() external nonReentrant {
         _contribute(msg.sender);
     }
@@ -376,6 +420,7 @@ contract RotaCircle is ReentrancyGuard {
     ///         current round on your behalf while the round is open. Requires you to
     ///         maintain an ERC-20 allowance to this contract; the contract can never
     ///         take more than `contributionAmount` once per round.
+    /// @dev Does not itself move funds or set an ERC-20 allowance.
     function optInAutoPay() external {
         if (!isMember[msg.sender]) revert NotMember();
         autoPayOptIn[msg.sender] = true;
@@ -383,6 +428,7 @@ contract RotaCircle is ReentrancyGuard {
     }
 
     /// @notice Opt out of AutoPay at any time.
+    /// @dev Does not revoke the ERC-20 allowance; do that in your wallet.
     function optOutAutoPay() external {
         autoPayOptIn[msg.sender] = false;
         emit AutoPayChanged(msg.sender, false);
@@ -392,7 +438,9 @@ contract RotaCircle is ReentrancyGuard {
     ///         anyone). Only works if the member opted in, only for the exact
     ///         contribution amount, only once per round, only while the round is open.
     /// @param member The opted-in member to pull from.
+    /// @dev Bounded by design: exactly one contribution, once per round.
     function pullContribution(address member) external nonReentrant {
+        if (member == address(0)) revert NotMember();
         if (!autoPayOptIn[member]) revert NotOptedIn();
         uint256 r = currentRound;
         _contribute(member);
@@ -404,6 +452,7 @@ contract RotaCircle is ReentrancyGuard {
     ///         strictly exceed the current best). Only members who have not yet won
     ///         and are not in default may bid, during the round's bid window.
     /// @param discountBps Discount offered, ≤ maxDiscountBps.
+    /// @dev Not nonReentrant: it moves no funds.
     function placeBid(uint256 discountBps) external {
         if (phase != Phase.ACTIVE || mode != Mode.BID) revert WrongPhase();
         if (!isMember[msg.sender]) revert NotMember();
@@ -414,9 +463,11 @@ contract RotaCircle is ReentrancyGuard {
         if (discountBps > maxDiscountBps) revert BidTooHigh();
         BestBid storage b = bestBid[r];
         if (b.exists && discountBps <= b.discountBps) revert BidTooLow();
-        // casting to 'uint16' is safe: discountBps <= maxDiscountBps <= 3000
-        // forge-lint: disable-next-line(unsafe-typecast)
-        bestBid[r] = BestBid({bidder: msg.sender, discountBps: uint16(discountBps), exists: true});
+        // SafeCast rather than a raw uint16 cast: discountBps <= maxDiscountBps
+        // <= 3000 already, so this can never revert, but it keeps the narrowing
+        // checked if MAX_DISCOUNT_LIMIT is ever raised.
+        bestBid[r] =
+            BestBid({bidder: msg.sender, discountBps: SafeCast.toUint16(discountBps), exists: true});
         emit BidPlaced(msg.sender, r, discountBps);
     }
 
@@ -480,6 +531,7 @@ contract RotaCircle is ReentrancyGuard {
     }
 
     /// @notice Withdraw accumulated bid dividends (and fallback distributions).
+    /// @dev Pull pattern; zeroes the balance before transferring.
     function withdrawDividends() external nonReentrant {
         uint256 amount = dividendBalance[msg.sender];
         if (amount == 0) revert NothingToWithdraw();
@@ -491,6 +543,7 @@ contract RotaCircle is ReentrancyGuard {
     /// @notice Repay slashed collateral + uncovered arrears + a 5% penalty to exit
     ///         default. Restores slashed collateral; shortfall + penalty roll into
     ///         the next round's pot. Requires prior approval of `cureCost()`.
+    /// @dev Requires prior approval of cureCost(msg.sender).
     function cureDefault() external nonReentrant {
         if (phase != Phase.ACTIVE) revert WrongPhase();
         if (!inDefault[msg.sender]) revert NotInDefault();
@@ -515,6 +568,7 @@ contract RotaCircle is ReentrancyGuard {
 
     /// @notice Withdraw remaining collateral after the circle completes or is
     ///         cancelled (pull pattern).
+    /// @dev Pull pattern; only available once the circle is terminal.
     function withdrawCollateral() external nonReentrant {
         if (phase != Phase.COMPLETED && phase != Phase.CANCELLED) revert WrongPhase();
         uint256 amount = collateralBalance[msg.sender];
@@ -527,21 +581,25 @@ contract RotaCircle is ReentrancyGuard {
     // ---------------------------------------------------------------- views
 
     /// @notice Collateral each member escrows on join.
+    /// @dev Rounds down; zero when collateralBps is zero.
     function collateralRequired() public view returns (uint256) {
         return (contributionAmount * collateralBps) / BPS;
     }
 
     /// @notice Contribution deadline for round `r` (schedule-anchored).
+    /// @dev Schedule-anchored: early settlement does not shift later rounds.
     function roundDeadline(uint256 r) public view returns (uint256) {
         return startTime + (r + 1) * roundDuration;
     }
 
     /// @notice End of the bid window for round `r` (BID mode; schedule-anchored).
+    /// @dev Schedule-anchored, like roundDeadline.
     function bidWindowEnd(uint256 r) public view returns (uint256) {
         return startTime + r * roundDuration + (roundDuration * bidWindowBps) / BPS;
     }
 
     /// @notice Total repayment required to cure `member`'s default (arrears + penalty).
+    /// @dev Returns zero for a member who is not in default.
     function cureCost(address member) external view returns (uint256) {
         uint256 owed = slashedAmount[member] + shortfallAmount[member];
         return owed + (owed * CURE_PENALTY_BPS) / BPS;
@@ -549,24 +607,32 @@ contract RotaCircle is ReentrancyGuard {
 
     /// @notice The recipient the next settle would pay under current state (bids may
     ///         still change it in BID mode). address(0) = fallback distribution.
+    /// @dev Advisory only: a later bid can still change the outcome.
     function previewRecipient() external view returns (address) {
         return _selectRecipient(currentRound);
     }
 
+    /// @notice Every member, in join order.
+    /// @dev Unbounded in name only: length is capped at MAX_MEMBERS.
     function getMembers() external view returns (address[] memory) {
         return members;
     }
 
+    /// @notice The resolved payout order (empty in BID mode, which picks per round).
+    /// @dev Populated at activation; RANDOM_ORDER shuffles it there.
     function getPayoutOrder() external view returns (address[] memory) {
         return payoutOrder;
     }
 
+    /// @notice How many members have joined so far.
+    /// @dev Cheaper than getMembers() when only the count is needed.
     function memberCount() external view returns (uint256) {
         return members.length;
     }
 
     // ------------------------------------------------------------ internals
 
+    /// @notice Shared contribution body for contribute() and pullContribution().
     /// @dev Shared contribution path for contribute() and pullContribution().
     ///      Contributions for round r are accepted from the moment r becomes current
     ///      (previous round settled — possibly early) until r's scheduled deadline.
@@ -584,6 +650,7 @@ contract RotaCircle is ReentrancyGuard {
         token.safeTransferFrom(member, address(this), contributionAmount);
     }
 
+    /// @notice Slash collateral from everyone who missed a round.
     /// @dev Slash collateral of every member who missed round `r`; returns the total
     ///      slashed value added to the pot. Uncovered value is recorded as shortfall
     ///      (the recipient receives a smaller pot — see SECURITY.md).
@@ -607,6 +674,7 @@ contract RotaCircle is ReentrancyGuard {
         }
     }
 
+    /// @notice Report a round's defaulters to the reputation registry.
     /// @dev Report round `r`'s defaulters to the reputation registry. Split out of
     ///      {_slashDefaulters} so settlement performs no external call until its
     ///      state is final; the defaulter set is exactly the members with no
@@ -619,6 +687,7 @@ contract RotaCircle is ReentrancyGuard {
         }
     }
 
+    /// @notice Choose the round's recipient and split the pot.
     /// @dev Pick the round's recipient, apply the bid discount, and credit dividends.
     ///      Returns (recipient, payout, discountBps). If recipient is address(0) the
     ///      pot was distributed as dividends (or carried) instead of paid out.
@@ -668,6 +737,7 @@ contract RotaCircle is ReentrancyGuard {
         hasWon[recipient] = true;
     }
 
+    /// @notice Pay a payee, falling back to a withdrawable credit.
     /// @dev Settlement transfers must never be able to block a round. USDC can
     ///      blacklist addresses, and safeTransfer would then revert settleRound
     ///      forever, freezing every member's contributions and collateral. Instead:
@@ -686,11 +756,13 @@ contract RotaCircle is ReentrancyGuard {
     ///      failure branch, so a reentrant token cannot mint itself a balance.
     // slither-disable-next-line reentrancy-benign,reentrancy-no-eth
     function _payOrCredit(address to, uint256 amount) internal {
+        if (amount == 0) return; // nothing to move; skip the external call entirely
         if (_tryTransfer(to, amount)) return;
         dividendBalance[to] += amount;
         emit PayoutDeferred(to, amount);
     }
 
+    /// @notice Attempt an ERC-20 transfer without reverting on failure.
     /// @dev Gas-capped, return-bomb-safe best-effort ERC-20 transfer. Reports
     ///      failure instead of reverting.
     ///
@@ -706,6 +778,8 @@ contract RotaCircle is ReentrancyGuard {
         bool called;
         uint256 size;
         uint256 word;
+        /// @dev Memory-safe: writes only to the 0x00-0x20 scratch space, and
+///      caps the returndata copy at one word (see the doc comment above).
         assembly ("memory-safe") {
             called := call(gasCap, t, 0, add(payload, 0x20), mload(payload), 0x00, 0x20)
             size := returndatasize()
@@ -717,6 +791,7 @@ contract RotaCircle is ReentrancyGuard {
         return size >= 32 && word != 0;
     }
 
+    /// @notice Pick the member who should receive a given round's pot.
     /// @dev Recipient selection. BID mode: the best bidder if still eligible,
     ///      otherwise (or with no bids) fall back to join order among members who
     ///      have not won and are not in default. FIXED/RANDOM: first eligible member

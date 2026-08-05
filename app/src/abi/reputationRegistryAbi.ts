@@ -30,14 +30,14 @@ export const reputationRegistryAbi = [
     "name": "authorized",
     "inputs": [
       {
-        "name": "",
+        "name": "writer",
         "type": "address",
         "internalType": "address"
       }
     ],
     "outputs": [
       {
-        "name": "",
+        "name": "allowed",
         "type": "bool",
         "internalType": "bool"
       }
@@ -420,6 +420,28 @@ export const reputationRegistryAbi = [
         "name": "account",
         "type": "address",
         "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "SafeCastOverflowedIntToUint",
+    "inputs": [
+      {
+        "name": "value",
+        "type": "int256",
+        "internalType": "int256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "SafeCastOverflowedUintToInt",
+    "inputs": [
+      {
+        "name": "value",
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ]
   },

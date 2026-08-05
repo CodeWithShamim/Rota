@@ -2,6 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {BaseTest} from "./BaseTest.sol";
+import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import {GoalPot} from "../src/GoalPot.sol";
 import {ReputationRegistry} from "../src/ReputationRegistry.sol";
 
@@ -235,7 +236,7 @@ contract GoalPotTest is BaseTest {
 
     function test_Initialize_OnlyOnceAndValidated() public {
         GoalPot pot = createPot(defaultPotParams());
-        vm.expectRevert(GoalPot.AlreadyInitialized.selector);
+        vm.expectRevert(Initializable.InvalidInitialization.selector);
         pot.initialize(defaultPotParams(), users[0], address(registry));
 
         GoalPot.PotParams memory bad = defaultPotParams();

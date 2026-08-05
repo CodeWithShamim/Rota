@@ -2,6 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {BaseTest} from "./BaseTest.sol";
+import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import {RotaCircle} from "../src/RotaCircle.sol";
 import {GoalPot} from "../src/GoalPot.sol";
 import {ReputationRegistry} from "../src/ReputationRegistry.sol";
@@ -210,11 +211,11 @@ contract AuditFixesTest is BaseTest {
 
     function test_Implementations_CannotBeInitialized() public {
         RotaCircle.CircleParams memory cp = defaultParams(RotaCircle.Mode.FIXED_ORDER, 3);
-        vm.expectRevert(RotaCircle.AlreadyInitialized.selector);
+        vm.expectRevert(Initializable.InvalidInitialization.selector);
         RotaCircle(circleImpl).initialize(cp, users[0], address(registry));
 
         GoalPot.PotParams memory pp = defaultPotParams();
-        vm.expectRevert(GoalPot.AlreadyInitialized.selector);
+        vm.expectRevert(Initializable.InvalidInitialization.selector);
         GoalPot(potImpl).initialize(pp, users[0], address(registry));
     }
 }

@@ -33,6 +33,19 @@ export const rotaCircleAbi = [
   },
   {
     "type": "function",
+    "name": "MAX_ALLOWLIST_BATCH",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "MAX_DISCOUNT_LIMIT",
     "inputs": [],
     "outputs": [
@@ -160,14 +173,14 @@ export const rotaCircleAbi = [
     "name": "allowlist",
     "inputs": [
       {
-        "name": "",
+        "name": "account",
         "type": "address",
         "internalType": "address"
       }
     ],
     "outputs": [
       {
-        "name": "",
+        "name": "allowed",
         "type": "bool",
         "internalType": "bool"
       }
@@ -179,14 +192,14 @@ export const rotaCircleAbi = [
     "name": "autoPayOptIn",
     "inputs": [
       {
-        "name": "",
+        "name": "member",
         "type": "address",
         "internalType": "address"
       }
     ],
     "outputs": [
       {
-        "name": "",
+        "name": "optedIn",
         "type": "bool",
         "internalType": "bool"
       }
@@ -198,7 +211,7 @@ export const rotaCircleAbi = [
     "name": "bestBid",
     "inputs": [
       {
-        "name": "",
+        "name": "round",
         "type": "uint256",
         "internalType": "uint256"
       }
@@ -266,14 +279,14 @@ export const rotaCircleAbi = [
     "name": "collateralBalance",
     "inputs": [
       {
-        "name": "",
+        "name": "member",
         "type": "address",
         "internalType": "address"
       }
     ],
     "outputs": [
       {
-        "name": "",
+        "name": "amount",
         "type": "uint256",
         "internalType": "uint256"
       }
@@ -370,14 +383,14 @@ export const rotaCircleAbi = [
     "name": "dividendBalance",
     "inputs": [
       {
-        "name": "",
+        "name": "payee",
         "type": "address",
         "internalType": "address"
       }
     ],
     "outputs": [
       {
-        "name": "",
+        "name": "amount",
         "type": "uint256",
         "internalType": "uint256"
       }
@@ -480,19 +493,19 @@ export const rotaCircleAbi = [
     "name": "hasContributed",
     "inputs": [
       {
-        "name": "",
+        "name": "round",
         "type": "uint256",
         "internalType": "uint256"
       },
       {
-        "name": "",
+        "name": "member",
         "type": "address",
         "internalType": "address"
       }
     ],
     "outputs": [
       {
-        "name": "",
+        "name": "paid",
         "type": "bool",
         "internalType": "bool"
       }
@@ -504,14 +517,14 @@ export const rotaCircleAbi = [
     "name": "hasWon",
     "inputs": [
       {
-        "name": "",
+        "name": "member",
         "type": "address",
         "internalType": "address"
       }
     ],
     "outputs": [
       {
-        "name": "",
+        "name": "won",
         "type": "bool",
         "internalType": "bool"
       }
@@ -523,14 +536,14 @@ export const rotaCircleAbi = [
     "name": "inDefault",
     "inputs": [
       {
-        "name": "",
+        "name": "member",
         "type": "address",
         "internalType": "address"
       }
     ],
     "outputs": [
       {
-        "name": "",
+        "name": "defaulted",
         "type": "bool",
         "internalType": "bool"
       }
@@ -650,14 +663,14 @@ export const rotaCircleAbi = [
     "name": "isMember",
     "inputs": [
       {
-        "name": "",
+        "name": "account",
         "type": "address",
         "internalType": "address"
       }
     ],
     "outputs": [
       {
-        "name": "",
+        "name": "joined",
         "type": "bool",
         "internalType": "bool"
       }
@@ -897,14 +910,14 @@ export const rotaCircleAbi = [
     "name": "roundContributionCount",
     "inputs": [
       {
-        "name": "",
+        "name": "round",
         "type": "uint256",
         "internalType": "uint256"
       }
     ],
     "outputs": [
       {
-        "name": "",
+        "name": "paidCount",
         "type": "uint256",
         "internalType": "uint256"
       }
@@ -986,14 +999,14 @@ export const rotaCircleAbi = [
     "name": "shortfallAmount",
     "inputs": [
       {
-        "name": "",
+        "name": "member",
         "type": "address",
         "internalType": "address"
       }
     ],
     "outputs": [
       {
-        "name": "",
+        "name": "amount",
         "type": "uint256",
         "internalType": "uint256"
       }
@@ -1005,14 +1018,14 @@ export const rotaCircleAbi = [
     "name": "slashedAmount",
     "inputs": [
       {
-        "name": "",
+        "name": "member",
         "type": "address",
         "internalType": "address"
       }
     ],
     "outputs": [
       {
-        "name": "",
+        "name": "amount",
         "type": "uint256",
         "internalType": "uint256"
       }
@@ -1160,7 +1173,7 @@ export const rotaCircleAbi = [
       {
         "name": "startTime",
         "type": "uint256",
-        "indexed": false,
+        "indexed": true,
         "internalType": "uint256"
       },
       {
@@ -1191,7 +1204,7 @@ export const rotaCircleAbi = [
       {
         "name": "fullAt",
         "type": "uint256",
-        "indexed": false,
+        "indexed": true,
         "internalType": "uint256"
       },
       {
@@ -1349,6 +1362,19 @@ export const rotaCircleAbi = [
   },
   {
     "type": "event",
+    "name": "Initialized",
+    "inputs": [
+      {
+        "name": "version",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "MemberJoined",
     "inputs": [
       {
@@ -1454,11 +1480,6 @@ export const rotaCircleAbi = [
   },
   {
     "type": "error",
-    "name": "AlreadyInitialized",
-    "inputs": []
-  },
-  {
-    "type": "error",
     "name": "AlreadyMember",
     "inputs": []
   },
@@ -1484,6 +1505,11 @@ export const rotaCircleAbi = [
   },
   {
     "type": "error",
+    "name": "InvalidInitialization",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "InvalidParams",
     "inputs": []
   },
@@ -1505,6 +1531,11 @@ export const rotaCircleAbi = [
   {
     "type": "error",
     "name": "NotInDefault",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NotInitializing",
     "inputs": []
   },
   {
@@ -1551,6 +1582,22 @@ export const rotaCircleAbi = [
     "type": "error",
     "name": "RoundClosed",
     "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "SafeCastOverflowedUintDowncast",
+    "inputs": [
+      {
+        "name": "bits",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "value",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
   },
   {
     "type": "error",

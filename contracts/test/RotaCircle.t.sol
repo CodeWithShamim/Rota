@@ -2,6 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {BaseTest} from "./BaseTest.sol";
+import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import {RotaCircle} from "../src/RotaCircle.sol";
 import {ReputationRegistry} from "../src/ReputationRegistry.sol";
 
@@ -48,7 +49,7 @@ contract RotaCircleTest is BaseTest {
 
     function test_Initialize_OnlyOnce() public {
         RotaCircle circle = createFullCircle(defaultParams(RotaCircle.Mode.FIXED_ORDER, 4));
-        vm.expectRevert(RotaCircle.AlreadyInitialized.selector);
+        vm.expectRevert(Initializable.InvalidInitialization.selector);
         circle.initialize(defaultParams(RotaCircle.Mode.FIXED_ORDER, 4), users[0], address(registry));
     }
 
