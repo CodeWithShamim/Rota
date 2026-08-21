@@ -5,32 +5,32 @@ Source of truth for all chain-specific values used in `app/src/config/chain.ts` 
 
 ## Network — Arc Testnet
 
-| Item | Value |
-|---|---|
-| Chain ID | `5042002` |
-| Network name | Arc Testnet |
-| RPC (primary) | `https://rpc.testnet.arc.network` |
+| Item             | Value                                                                                                                              |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Chain ID         | `5042002`                                                                                                                          |
+| Network name     | Arc Testnet                                                                                                                        |
+| RPC (primary)    | `https://rpc.testnet.arc.network`                                                                                                  |
 | RPC (alternates) | `https://rpc.blockdaemon.testnet.arc.network`, `https://rpc.drpc.testnet.arc.network`, `https://rpc.quicknode.testnet.arc.network` |
-| WebSocket | `wss://rpc.testnet.arc.network` |
-| Block explorer | `https://testnet.arcscan.app` |
-| Native currency | USDC (symbol `USDC`, **18 decimals** at the native layer) |
-| Faucet | `https://faucet.circle.com` (select Arc Testnet) |
-| Finality | Deterministic and instant — a tx is final on inclusion |
-| Block time | ~0.5s, 30M gas/block |
+| WebSocket        | `wss://rpc.testnet.arc.network`                                                                                                    |
+| Block explorer   | `https://testnet.arcscan.app`                                                                                                      |
+| Native currency  | USDC (symbol `USDC`, **18 decimals** at the native layer)                                                                          |
+| Faucet           | `https://faucet.circle.com` (select Arc Testnet)                                                                                   |
+| Finality         | Deterministic and instant — a tx is final on inclusion                                                                             |
+| Block time       | ~0.5s, 30M gas/block                                                                                                               |
 
 Mainnet addresses/config are **not yet published** by Circle.
 
 ## Key contract addresses (Arc Testnet)
 
-| Contract | Address | Notes |
-|---|---|---|
-| **USDC (ERC-20 interface)** | `0x3600000000000000000000000000000000000000` | ERC-20 view over the *native* USDC balance. **6 decimals.** This is the `token` Rota contracts use. |
-| EURC | `0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a` | 6 decimals |
-| Multicall3 | `0xcA11bde05977b3631167028862bE2a173976CA11` | standard address — wagmi/viem batching works |
-| CREATE2 Factory | `0x4e59b44847b379578588920cA78FbF26c0B4956C` | standard deterministic deployer — `forge script` works normally |
-| Permit2 | `0x000000000022D473030F116dDEE9F6B43aC78BA3` | future: gasless approvals |
-| TokenMessengerV2 (CCTP) | `0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA` | future: cross-chain deposits |
-| GatewayWallet | `0x0077777d7EBA4688BDeF3E311b846F25870A19B9` | future: App Kit Unified Balance |
+| Contract                    | Address                                      | Notes                                                                                               |
+| --------------------------- | -------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| **USDC (ERC-20 interface)** | `0x3600000000000000000000000000000000000000` | ERC-20 view over the _native_ USDC balance. **6 decimals.** This is the `token` Rota contracts use. |
+| EURC                        | `0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a` | 6 decimals                                                                                          |
+| Multicall3                  | `0xcA11bde05977b3631167028862bE2a173976CA11` | standard address — wagmi/viem batching works                                                        |
+| CREATE2 Factory             | `0x4e59b44847b379578588920cA78FbF26c0B4956C` | standard deterministic deployer — `forge script` works normally                                     |
+| Permit2                     | `0x000000000022D473030F116dDEE9F6B43aC78BA3` | future: gasless approvals                                                                           |
+| TokenMessengerV2 (CCTP)     | `0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA` | future: cross-chain deposits                                                                        |
+| GatewayWallet               | `0x0077777d7EBA4688BDeF3E311b846F25870A19B9` | future: App Kit Unified Balance                                                                     |
 
 ## Gas & fees
 
@@ -71,12 +71,12 @@ Deployed with `pnpm deploy:arc` (`script/DeployArc.s.sol`); the canonical record
 `contracts/deployments/arc.json` (synced to `app/src/config/deployments.arc.json`).
 Full deploy cost ≈ 0.12 USDC in gas at ~41 gwei (5 txs).
 
-| Contract | Address |
-|---|---|
-| RotaFactory | `0x1ba8Aabc9501d6C68A9eE1387b0d40d53EdCC325` |
-| ReputationRegistry | `0xDE51D720ad3b93300e6f8A6F936f62F291c5CE80` |
-| RotaCircle implementation | `0x5d5f658706acCB2B25B7f3FE22261C44DCA0DC2F` |
-| GoalPot implementation | `0x0159536F931Ed1d1DdFEB4f1fc69F9f8429f0161` |
+| Contract                  | Address                                      |
+| ------------------------- | -------------------------------------------- |
+| RotaFactory               | `0x7d455FDBB89dD631F37D6BE152e97b567050ce88` |
+| ReputationRegistry        | `0xD4dad0f7c39d9DF9F06d10DD69431C40CC38e0E3` |
+| RotaCircle implementation | `0xDd28e4243de63745eb67e9a51c925d21de3AbB73` |
+| GoalPot implementation    | `0xa823a67745ae861f620763963673D73bD5058b30` |
 
 Post-deploy verification (all live on `https://rpc.testnet.arc.network`):
 `factory.registry()` ↔ `registry.factory()` point at each other, both implementation

@@ -1,10 +1,10 @@
 # Rota ◎ — Global Group Savings & Rotating Credit on Arc
 
-> *rota* (Latin): wheel. **Your turn always comes.**
+> _rota_ (Latin): wheel. **Your turn always comes.**
 
-The world has always saved in circles — *somiti* (Bangladesh), *chit fund/kameti*
-(India, Pakistan), *tanda* (Mexico), *susu* (Ghana, Caribbean), *esusu/ajo* (Nigeria),
-*hui* (China), *paluwagan* (Philippines), *gam'eya* (Egypt). Rota puts them all on one
+The world has always saved in circles — _somiti_ (Bangladesh), _chit fund/kameti_
+(India, Pakistan), _tanda_ (Mexico), _susu_ (Ghana, Caribbean), _esusu/ajo_ (Nigeria),
+_hui_ (China), _paluwagan_ (Philippines), _gam'eya_ (Egypt). Rota puts them all on one
 set of rails: smart-contract escrowed savings circles in USDC on
 [Arc](https://docs.arc.io), Circle's stablecoin-native L1.
 
@@ -14,11 +14,11 @@ markets are configuration, not refactoring (see [Adding a locale/currency](#addi
 
 ## Products
 
-| Product | What it is |
-|---|---|
-| **Rota Circle** | Classic ROSCA: N members pay a fixed USDC amount per round; each round one member takes the whole pot (fixed or random order). |
-| **Bid Circle** | Chit-fund mode: members who haven't won bid a *discount* to take the pot early; the discount is redistributed to everyone as a dividend — a market price for liquidity. |
-| **Goal Pot** | Non-rotating group saving toward a target (wedding, tuition, Eid, land). Locks until target/deadline; everyone withdraws exactly their own deposits. |
+| Product         | What it is                                                                                                                                                              |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Rota Circle** | Classic ROSCA: N members pay a fixed USDC amount per round; each round one member takes the whole pot (fixed or random order).                                          |
+| **Bid Circle**  | Chit-fund mode: members who haven't won bid a _discount_ to take the pot early; the discount is redistributed to everyone as a dividend — a market price for liquidity. |
+| **Goal Pot**    | Non-rotating group saving toward a target (wedding, tuition, Eid, land). Locks until target/deadline; everyone withdraws exactly their own deposits.                    |
 
 Cross-cutting: contract escrow (no absconding organizer), deterministic payouts,
 collateral + default curing, non-custodial **AutoPay**, optional **Giving round**
@@ -81,12 +81,12 @@ pnpm test:contracts    # forge test — 74 tests, all green
 Rota is **deployed on Arc Testnet** (chain id `5042002`, redeployed 2026-07-12 with
 the audit fixes from [SECURITY.md](SECURITY.md)):
 
-| Contract | Address |
-|---|---|
-| RotaFactory | [`0x1ba8Aabc9501d6C68A9eE1387b0d40d53EdCC325`](https://testnet.arcscan.app/address/0x1ba8Aabc9501d6C68A9eE1387b0d40d53EdCC325) |
-| ReputationRegistry | [`0xDE51D720ad3b93300e6f8A6F936f62F291c5CE80`](https://testnet.arcscan.app/address/0xDE51D720ad3b93300e6f8A6F936f62F291c5CE80) |
-| RotaCircle implementation | [`0x5d5f658706acCB2B25B7f3FE22261C44DCA0DC2F`](https://testnet.arcscan.app/address/0x5d5f658706acCB2B25B7f3FE22261C44DCA0DC2F) |
-| GoalPot implementation | [`0x0159536F931Ed1d1DdFEB4f1fc69F9f8429f0161`](https://testnet.arcscan.app/address/0x0159536F931Ed1d1DdFEB4f1fc69F9f8429f0161) |
+| Contract                          | Address                                                                                                                        |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| RotaFactory                       | [`0x7d455FDBB89dD631F37D6BE152e97b567050ce88`](https://testnet.arcscan.app/address/0x7d455FDBB89dD631F37D6BE152e97b567050ce88) |
+| ReputationRegistry                | [`0xD4dad0f7c39d9DF9F06d10DD69431C40CC38e0E3`](https://testnet.arcscan.app/address/0xD4dad0f7c39d9DF9F06d10DD69431C40CC38e0E3) |
+| RotaCircle implementation         | [`0xDd28e4243de63745eb67e9a51c925d21de3AbB73`](https://testnet.arcscan.app/address/0xDd28e4243de63745eb67e9a51c925d21de3AbB73) |
+| GoalPot implementation            | [`0xa823a67745ae861f620763963673D73bD5058b30`](https://testnet.arcscan.app/address/0xa823a67745ae861f620763963673D73bD5058b30) |
 | USDC (canonical ERC-20 interface) | [`0x3600000000000000000000000000000000000000`](https://testnet.arcscan.app/address/0x3600000000000000000000000000000000000000) |
 
 Run the app against it with `VITE_CHAIN=arc pnpm dev` (or set `VITE_CHAIN=arc` in
@@ -106,8 +106,8 @@ it with `genlayer-js` — no backend, no API keys.
 
 A curator instance is **live on GenLayer studionet**:
 
-| Contract | Network | Address |
-|---|---|---|
+| Contract                               | Network            | Address                                                                                                                                 |
+| -------------------------------------- | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------- |
 | RotaNewsCurator (Intelligent Contract) | GenLayer studionet | [`0xDFEE06117b8d91b5b3e17Bfb09C6C0592ea71690`](https://explorer-studio.genlayer.com/address/0xDFEE06117b8d91b5b3e17Bfb09C6C0592ea71690) |
 
 To run your own instance, deploy [`news_curator.py`](genlayer/news_curator.py) at
@@ -176,21 +176,21 @@ with QR, history, and client-side signature verification — no backend.
 
 The phased plan behind the “Future” column lives in [docs/ROADMAP.md](docs/ROADMAP.md).
 
-| Feature | MVP | Future |
-|---|---|---|
-| ROSCA / bid / goal-pot products | ✅ | |
-| Collateral, default slashing, curing | ✅ | multi-round collateral |
-| Non-custodial AutoPay | ✅ | protocol keeper network |
-| Giving round (Zakat/Sadaqah) | ✅ | |
-| Reputation registry + passport page | ✅ | soul-bound token passport |
-| en + bn locales, 7 display currencies | ✅ | es/hi/ur/tl translations |
-| In-app + browser deadline reminders | ✅ | Telegram/WhatsApp bots |
-| Random order via blockhash | ✅ (documented) | Chainlink VRF |
-| Local anvil + Arc testnet | ✅ | mainnet (post-audit, post-legal) |
-| Fiat ramps (bKash/Nagad, UPI, M-Pesa, GCash) | — | per-market integrations |
-| Arc App Kit Unified Balance / Bridge deposits | — | chain-abstracted funding |
-| Emergency micro-advances against reputation | — | research |
-| AI organizer agent, mobile app | — | research |
+| Feature                                       | MVP             | Future                           |
+| --------------------------------------------- | --------------- | -------------------------------- |
+| ROSCA / bid / goal-pot products               | ✅              |                                  |
+| Collateral, default slashing, curing          | ✅              | multi-round collateral           |
+| Non-custodial AutoPay                         | ✅              | protocol keeper network          |
+| Giving round (Zakat/Sadaqah)                  | ✅              |                                  |
+| Reputation registry + passport page           | ✅              | soul-bound token passport        |
+| en + bn locales, 7 display currencies         | ✅              | es/hi/ur/tl translations         |
+| In-app + browser deadline reminders           | ✅              | Telegram/WhatsApp bots           |
+| Random order via blockhash                    | ✅ (documented) | Chainlink VRF                    |
+| Local anvil + Arc testnet                     | ✅              | mainnet (post-audit, post-legal) |
+| Fiat ramps (bKash/Nagad, UPI, M-Pesa, GCash)  | —               | per-market integrations          |
+| Arc App Kit Unified Balance / Bridge deposits | —               | chain-abstracted funding         |
+| Emergency micro-advances against reputation   | —               | research                         |
+| AI organizer agent, mobile app                | —               | research                         |
 
 ## Adding a locale/currency
 
