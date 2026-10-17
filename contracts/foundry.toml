@@ -29,4 +29,4 @@ fail_on_revert = false
 
 [rpc_endpoints]
 local = "http://127.0.0.1:8545"
-arc_testnet = "https://rpc.testnet.arc.network"
+arc_testnet = "https://rpc.testnet.arc.io"

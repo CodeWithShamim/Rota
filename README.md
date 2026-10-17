@@ -120,7 +120,7 @@ fail, redeploy and update the address.
 
 Chain values were researched from docs.arc.io and recorded in
 [docs/ARC_NOTES.md](docs/ARC_NOTES.md): chain id **5042002**, RPC
-`https://rpc.testnet.arc.network`, explorer `https://testnet.arcscan.app`, USDC =
+`https://rpc.testnet.arc.io`, explorer `https://testnet.arcscan.app`, USDC =
 native gas token with an ERC-20 interface at `0x3600…0000` (6 decimals).
 
 1. Fund a deployer wallet with testnet USDC at <https://faucet.circle.com>

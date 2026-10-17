@@ -9,7 +9,7 @@ Source of truth for all chain-specific values used in `app/src/config/chain.ts` 
 | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
 | Chain ID         | `5042002`                                                                                                                          |
 | Network name     | Arc Testnet                                                                                                                        |
-| RPC (primary)    | `https://rpc.testnet.arc.network`                                                                                                  |
+| RPC (primary)    | `https://rpc.testnet.arc.io`                                                                                                       |
 | RPC (alternates) | `https://rpc.blockdaemon.testnet.arc.network`, `https://rpc.drpc.testnet.arc.network`, `https://rpc.quicknode.testnet.arc.network` |
 | WebSocket        | `wss://rpc.testnet.arc.network`                                                                                                    |
 | Block explorer   | `https://testnet.arcscan.app`                                                                                                      |
@@ -78,7 +78,7 @@ Full deploy cost ≈ 0.12 USDC in gas at ~41 gwei (5 txs).
 | RotaCircle implementation | `0xDd28e4243de63745eb67e9a51c925d21de3AbB73` |
 | GoalPot implementation    | `0xa823a67745ae861f620763963673D73bD5058b30` |
 
-Post-deploy verification (all live on `https://rpc.testnet.arc.network`):
+Post-deploy verification (all live on `https://rpc.testnet.arc.io`):
 `factory.registry()` ↔ `registry.factory()` point at each other, both implementation
 getters match the JSON, USDC at `0x3600…0000` reports `symbol()=USDC` /
 `decimals()=6`.

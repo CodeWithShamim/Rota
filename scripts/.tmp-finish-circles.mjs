@@ -3,7 +3,14 @@
 // top up short wallets from master, fill in missing contributions (via AutoPay
 // pull where the member opted in), settle to completion, withdraw collateral.
 import { readFileSync } from "node:fs";
-import { createPublicClient, createWalletClient, defineChain, http, formatUnits, parseEther } from "viem";
+import {
+  createPublicClient,
+  createWalletClient,
+  defineChain,
+  http,
+  formatUnits,
+  parseEther,
+} from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 
 const ROOT = "/Users/shamimislam/buildingApps/rota";
@@ -13,22 +20,39 @@ const CIRCLES = [
 ];
 const USDC = "0x3600000000000000000000000000000000000000";
 
-const circleAbi = JSON.parse(readFileSync(`${ROOT}/contracts/out/RotaCircle.sol/RotaCircle.json`, "utf8")).abi;
+const circleAbi = JSON.parse(
+  readFileSync(`${ROOT}/contracts/out/RotaCircle.sol/RotaCircle.json`, "utf8"),
+).abi;
 const erc20Abi = [
-  { type: "function", name: "approve", stateMutability: "nonpayable", inputs: [{ type: "address" }, { type: "uint256" }], outputs: [{ type: "bool" }] },
-  { type: "function", name: "allowance", stateMutability: "view", inputs: [{ type: "address" }, { type: "address" }], outputs: [{ type: "uint256" }] },
+  {
+    type: "function",
+    name: "approve",
+    stateMutability: "nonpayable",
+    inputs: [{ type: "address" }, { type: "uint256" }],
+    outputs: [{ type: "bool" }],
+  },
+  {
+    type: "function",
+    name: "allowance",
+    stateMutability: "view",
+    inputs: [{ type: "address" }, { type: "address" }],
+    outputs: [{ type: "uint256" }],
+  },
 ];
 
 const arc = defineChain({
   id: 5042002,
   name: "Arc Testnet",
   nativeCurrency: { name: "USDC", symbol: "USDC", decimals: 18 },
-  rpcUrls: { default: { http: ["https://rpc.testnet.arc.network"] } },
+  rpcUrls: { default: { http: ["https://rpc.testnet.arc.io"] } },
   testnet: true,
 });
-const transport = http("https://rpc.testnet.arc.network");
+const transport = http("https://rpc.testnet.arc.io");
 const pub = createPublicClient({ chain: arc, transport });
-const FEES = { maxFeePerGas: 50_000_000_000n, maxPriorityFeePerGas: 1_000_000_000n };
+const FEES = {
+  maxFeePerGas: 50_000_000_000n,
+  maxPriorityFeePerGas: 1_000_000_000n,
+};
 
 // load PRIVATE_KEY from .env/.env.local
 for (const f of [".env", ".env.local"]) {
@@ -39,16 +63,37 @@ for (const f of [".env", ".env.local"]) {
     }
   } catch {}
 }
-const master = createWalletClient({ account: privateKeyToAccount(process.env.PRIVATE_KEY), chain: arc, transport });
+const master = createWalletClient({
+  account: privateKeyToAccount(process.env.PRIVATE_KEY),
+  chain: arc,
+  transport,
+});
 
-const keys = JSON.parse(readFileSync(`${ROOT}/scripts/.seed-wallets.arc.json`, "utf8"));
-const names = ["Ayesha", "Rafiq", "Tania", "Imran", "Shorna", "Kamal", "Mitu", "Jahid"];
+const keys = JSON.parse(
+  readFileSync(`${ROOT}/scripts/.seed-wallets.arc.json`, "utf8"),
+);
+const names = [
+  "Ayesha",
+  "Rafiq",
+  "Tania",
+  "Imran",
+  "Shorna",
+  "Kamal",
+  "Mitu",
+  "Jahid",
+];
 const W = keys.map((k, i) => {
-  const w = createWalletClient({ account: privateKeyToAccount(k), chain: arc, transport });
+  const w = createWalletClient({
+    account: privateKeyToAccount(k),
+    chain: arc,
+    transport,
+  });
   w.persona = names[i];
   return w;
 });
-const byAddr = Object.fromEntries(W.map((w) => [w.account.address.toLowerCase(), w]));
+const byAddr = Object.fromEntries(
+  W.map((w) => [w.account.address.toLowerCase(), w]),
+);
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const pause = () => sleep((3 + Math.random() * 8) * 1000);
@@ -58,17 +103,24 @@ const pick = (a) => a[Math.floor(Math.random() * a.length)];
 async function tx(wallet, params, label) {
   for (let attempt = 1; ; attempt++) {
     try {
-      const { request } = await pub.simulateContract({ account: wallet.account, ...params });
+      const { request } = await pub.simulateContract({
+        account: wallet.account,
+        ...params,
+      });
       request.maxFeePerGas = FEES.maxFeePerGas;
       request.maxPriorityFeePerGas = FEES.maxPriorityFeePerGas;
       const hash = await wallet.writeContract(request);
       const receipt = await pub.waitForTransactionReceipt({ hash });
       if (receipt.status !== "success") throw new Error(`reverted: ${hash}`);
-      console.log(`   ${wallet.persona} · ${label}\n      https://testnet.arcscan.app/tx/${hash}`);
+      console.log(
+        `   ${wallet.persona} · ${label}\n      https://testnet.arcscan.app/tx/${hash}`,
+      );
       return receipt;
     } catch (e) {
       if (attempt >= 3) throw e;
-      console.log(`   retry (${wallet.persona} · ${label}): ${e.shortMessage ?? e.message}`);
+      console.log(
+        `   retry (${wallet.persona} · ${label}): ${e.shortMessage ?? e.message}`,
+      );
       await sleep(6000);
     }
   }
@@ -79,41 +131,95 @@ async function ensureBalance(w, needUnits6) {
   const need = needUnits6 * 10n ** 12n + parseEther("0.05"); // 6-dec → 18-dec + gas headroom
   if (bal >= need) return;
   const value = need - bal + parseEther("0.1");
-  const hash = await master.sendTransaction({ to: w.account.address, value, ...FEES });
+  const hash = await master.sendTransaction({
+    to: w.account.address,
+    value,
+    ...FEES,
+  });
   await pub.waitForTransactionReceipt({ hash });
-  console.log(`   master topped up ${w.persona} with ${formatUnits(value, 18)} USDC`);
+  console.log(
+    `   master topped up ${w.persona} with ${formatUnits(value, 18)} USDC`,
+  );
 }
 
 async function finishCircle(circle) {
-  const read = (fn, args = []) => pub.readContract({ address: circle, abi: circleAbi, functionName: fn, args });
+  const read = (fn, args = []) =>
+    pub.readContract({
+      address: circle,
+      abi: circleAbi,
+      functionName: fn,
+      args,
+    });
   const name = await read("name");
   const memberAddrs = await read("getMembers");
   const members = memberAddrs.map((a) => byAddr[a.toLowerCase()]);
   const organizer = byAddr[(await read("organizer")).toLowerCase()];
   const amount = await read("contributionAmount");
   const cap = Number(await read("memberCap"));
-  console.log(`\nFinishing "${name}" (${circle}) — round ${Number(await read("currentRound")) + 1}/${cap}`);
+  console.log(
+    `\nFinishing "${name}" (${circle}) — round ${Number(await read("currentRound")) + 1}/${cap}`,
+  );
 
-  for (let r = Number(await read("currentRound")); r < cap; r = Number(await read("currentRound"))) {
+  for (
+    let r = Number(await read("currentRound"));
+    r < cap;
+    r = Number(await read("currentRound"))
+  ) {
     console.log(`   — round ${r + 1}/${cap}`);
     for (const w of shuffled(members)) {
-      if (await read("hasContributed", [BigInt(r), w.account.address])) continue;
+      if (await read("hasContributed", [BigInt(r), w.account.address]))
+        continue;
       await ensureBalance(w, amount);
       const optedIn = await read("autoPayOptIn", [w.account.address]);
-      const allowance = await pub.readContract({ address: USDC, abi: erc20Abi, functionName: "allowance", args: [w.account.address, circle] });
+      const allowance = await pub.readContract({
+        address: USDC,
+        abi: erc20Abi,
+        functionName: "allowance",
+        args: [w.account.address, circle],
+      });
       if (optedIn && allowance >= amount) {
-        await tx(organizer, { address: circle, abi: circleAbi, functionName: "pullContribution", args: [w.account.address] }, `AutoPay pull for ${w.persona}`);
+        await tx(
+          organizer,
+          {
+            address: circle,
+            abi: circleAbi,
+            functionName: "pullContribution",
+            args: [w.account.address],
+          },
+          `AutoPay pull for ${w.persona}`,
+        );
       } else {
-        await tx(w, { address: USDC, abi: erc20Abi, functionName: "approve", args: [circle, amount] }, "approve");
-        await tx(w, { address: circle, abi: circleAbi, functionName: "contribute" }, "contribute");
+        await tx(
+          w,
+          {
+            address: USDC,
+            abi: erc20Abi,
+            functionName: "approve",
+            args: [circle, amount],
+          },
+          "approve",
+        );
+        await tx(
+          w,
+          { address: circle, abi: circleAbi, functionName: "contribute" },
+          "contribute",
+        );
       }
       await pause();
     }
-    await tx(pick(members), { address: circle, abi: circleAbi, functionName: "settleRound" }, `settle round ${r + 1}`);
+    await tx(
+      pick(members),
+      { address: circle, abi: circleAbi, functionName: "settleRound" },
+      `settle round ${r + 1}`,
+    );
     await pause();
   }
   for (const w of shuffled(members)) {
-    await tx(w, { address: circle, abi: circleAbi, functionName: "withdrawCollateral" }, "withdraw collateral");
+    await tx(
+      w,
+      { address: circle, abi: circleAbi, functionName: "withdrawCollateral" },
+      "withdraw collateral",
+    );
     await pause();
   }
   console.log(`✓ "${name}" completed: ${circle}`);
