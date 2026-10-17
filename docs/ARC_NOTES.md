@@ -12,7 +12,7 @@ Source of truth for all chain-specific values used in `app/src/config/chain.ts` 
 | RPC (primary)    | `https://rpc.testnet.arc.io`                                                                                                       |
 | RPC (alternates) | `https://rpc.blockdaemon.testnet.arc.network`, `https://rpc.drpc.testnet.arc.network`, `https://rpc.quicknode.testnet.arc.network` |
 | WebSocket        | `wss://rpc.testnet.arc.network`                                                                                                    |
-| Block explorer   | `https://testnet.arcscan.app`                                                                                                      |
+| Block explorer   | `explorer.testnet.arc.io`                                                                                                          |
 | Native currency  | USDC (symbol `USDC`, **18 decimals** at the native layer)                                                                          |
 | Faucet           | `https://faucet.circle.com` (select Arc Testnet)                                                                                   |
 | Finality         | Deterministic and instant — a tx is final on inclusion                                                                             |

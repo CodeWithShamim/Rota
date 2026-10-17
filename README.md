@@ -81,13 +81,13 @@ pnpm test:contracts    # forge test — 74 tests, all green
 Rota is **deployed on Arc Testnet** (chain id `5042002`, redeployed 2026-07-12 with
 the audit fixes from [SECURITY.md](SECURITY.md)):
 
-| Contract                          | Address                                                                                                                        |
-| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| RotaFactory                       | [`0x7d455FDBB89dD631F37D6BE152e97b567050ce88`](https://testnet.arcscan.app/address/0x7d455FDBB89dD631F37D6BE152e97b567050ce88) |
-| ReputationRegistry                | [`0xD4dad0f7c39d9DF9F06d10DD69431C40CC38e0E3`](https://testnet.arcscan.app/address/0xD4dad0f7c39d9DF9F06d10DD69431C40CC38e0E3) |
-| RotaCircle implementation         | [`0xDd28e4243de63745eb67e9a51c925d21de3AbB73`](https://testnet.arcscan.app/address/0xDd28e4243de63745eb67e9a51c925d21de3AbB73) |
-| GoalPot implementation            | [`0xa823a67745ae861f620763963673D73bD5058b30`](https://testnet.arcscan.app/address/0xa823a67745ae861f620763963673D73bD5058b30) |
-| USDC (canonical ERC-20 interface) | [`0x3600000000000000000000000000000000000000`](https://testnet.arcscan.app/address/0x3600000000000000000000000000000000000000) |
+| Contract                          | Address                                                                                                                    |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| RotaFactory                       | [`0x7d455FDBB89dD631F37D6BE152e97b567050ce88`](explorer.testnet.arc.io/address/0x7d455FDBB89dD631F37D6BE152e97b567050ce88) |
+| ReputationRegistry                | [`0xD4dad0f7c39d9DF9F06d10DD69431C40CC38e0E3`](explorer.testnet.arc.io/address/0xD4dad0f7c39d9DF9F06d10DD69431C40CC38e0E3) |
+| RotaCircle implementation         | [`0xDd28e4243de63745eb67e9a51c925d21de3AbB73`](explorer.testnet.arc.io/address/0xDd28e4243de63745eb67e9a51c925d21de3AbB73) |
+| GoalPot implementation            | [`0xa823a67745ae861f620763963673D73bD5058b30`](explorer.testnet.arc.io/address/0xa823a67745ae861f620763963673D73bD5058b30) |
+| USDC (canonical ERC-20 interface) | [`0x3600000000000000000000000000000000000000`](explorer.testnet.arc.io/address/0x3600000000000000000000000000000000000000) |
 
 Run the app against it with `VITE_CHAIN=arc pnpm dev` (or set `VITE_CHAIN=arc` in
 `.env` / `.env.local` at the repo root — the app reads env from there). Get testnet
@@ -120,7 +120,7 @@ fail, redeploy and update the address.
 
 Chain values were researched from docs.arc.io and recorded in
 [docs/ARC_NOTES.md](docs/ARC_NOTES.md): chain id **5042002**, RPC
-`https://rpc.testnet.arc.io`, explorer `https://testnet.arcscan.app`, USDC =
+`https://rpc.testnet.arc.io`, explorer `explorer.testnet.arc.io`, USDC =
 native gas token with an ERC-20 interface at `0x3600…0000` (6 decimals).
 
 1. Fund a deployer wallet with testnet USDC at <https://faucet.circle.com>

@@ -143,7 +143,7 @@ const arcTestnet = defineChain({
 const USDC = deployments.usdc;
 const FACTORY = deployments.factory;
 const ZERO = "0x0000000000000000000000000000000000000000";
-const EXPLORER = "https://testnet.arcscan.app/tx/";
+const EXPLORER = "explorer.testnet.arc.io/tx/";
 const usd = (n) => parseUnits(String(n), 6);
 const fmt = (v) => formatUnits(v, 6);
 const DAY = 24n * 3600n;

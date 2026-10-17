@@ -113,7 +113,7 @@ async function tx(wallet, params, label) {
       const receipt = await pub.waitForTransactionReceipt({ hash });
       if (receipt.status !== "success") throw new Error(`reverted: ${hash}`);
       console.log(
-        `   ${wallet.persona} · ${label}\n      https://testnet.arcscan.app/tx/${hash}`,
+        `   ${wallet.persona} · ${label}\n      explorer.testnet.arc.io/tx/${hash}`,
       );
       return receipt;
     } catch (e) {
