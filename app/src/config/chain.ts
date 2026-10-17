@@ -64,7 +64,7 @@ export const arcTestnet = defineChain({
     },
   },
   blockExplorers: {
-    default: { name: "Arcscan", url: "explorer.testnet.arc.io" },
+    default: { name: "Arcscan", url: "https://explorer.testnet.arc.io" },
   },
   contracts: {
     multicall3: { address: "0xcA11bde05977b3631167028862bE2a173976CA11" },
